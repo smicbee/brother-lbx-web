@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "Cross-platform MVP parser, SVG/PNG renderer, and Brother QL raster encoder for Brother P-touch LBX templates.",
   "type": "module",
-  "license": "MIT",
+  "license": "SEE LICENSE IN LICENSE",
   "bin": {
     "lbx-render": "./dist/cli.js"
   },
@@ -24,7 +24,8 @@
   "files": [
     "dist",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "LLMS.md"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",

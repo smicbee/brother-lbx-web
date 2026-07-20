@@ -2,6 +2,13 @@
 
 TypeScript/ESM-MVP zum Lesen von Brother-P-touch-Editor-`.lbx`-Vorlagen unter Linux/Node und im Browser. LBX wird als ZIP gelesen; die Bibliothek trennt Parser, Bindings, SVG, Node-PNG und QL-Rasterprotokoll.
 
+> **Lizenz: ausschließlich private, nichtkommerzielle Nutzung.** Dieses Projekt ist
+> source-available, aber keine Open-Source-Software. Jede Verwendung durch oder
+> für Unternehmen, Arbeitgeber, Kunden oder andere Organisationen erfordert eine
+> separate vorherige schriftliche Erlaubnis. Maßgeblich ist die Datei
+> [LICENSE](./LICENSE); für LLMs und automatisierte Agenten steht zusätzlich
+> [LLMS.md](./LLMS.md) bereit.
+
 ## Schnellstart
 
 ```bash

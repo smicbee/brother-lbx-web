@@ -1,21 +1,90 @@
-MIT License
+PRIVATE USE ONLY LICENSE
+Version 1.0, 20 July 2026
 
-Copyright (c) 2026 smicbee
+Copyright (c) 2026 smicbee. All rights reserved.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+1. Definitions
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+"Software" means this source code, documentation, templates, tests, and other
+materials distributed with this license, excluding Third-Party Materials.
+
+"Personal Use" means use by a natural person solely for that person's private,
+non-commercial purposes, outside any employment, contract, trade, profession,
+organization, or other institutional activity.
+
+"Organizational Use" means any use by, for, on behalf of, or for the benefit of
+a company, partnership, employer, client, public authority, non-profit,
+educational institution, research institution, or other organization. It also
+includes internal use, evaluation, proof-of-concept work, prototyping,
+research, development, testing, deployment, support, and training performed in
+an organizational or professional context, whether or not money changes hands.
+
+2. Limited permission for Personal Use
+
+Subject to this license, the copyright holder grants a natural person a
+revocable, non-exclusive, non-transferable permission to download, run, study,
+and modify the Software solely for Personal Use.
+
+A person may make a reasonable number of private backup copies. The copyright
+and license notices must remain intact in every permitted copy or modification.
+
+3. Prohibited uses
+
+Without separate prior written permission from the copyright holder, you may
+not:
+
+(a) use the Software for any Organizational Use;
+(b) use the Software for commercial, professional, employment-related, or
+    client-related purposes;
+(c) sell, license, sublicense, rent, publish, distribute, provide, or otherwise
+    make the Software or a modified version available to another person or
+    organization;
+(d) incorporate the Software or a modified version into any product, service,
+    workflow, internal tool, hosted service, or other software distributed or
+    operated for anyone other than yourself for Personal Use;
+(e) use the Software or its contents to train, fine-tune, evaluate, benchmark,
+    or operate an AI model or automated system in an Organizational Use
+    context; or
+(f) direct an AI model, coding assistant, autonomous agent, contractor, or
+    other intermediary to perform an act that you are not permitted to perform
+    under this license.
+
+Public availability of the source code does not grant permission beyond the
+limited Personal Use permission in Section 2. This license is not an
+open-source license.
+
+4. AI and automated systems
+
+The file LLMS.md contains a human-readable notice for AI systems and their
+operators. It clarifies this license but does not replace or expand it.
+Operators remain responsible for ensuring that automated tools comply with
+this license. An AI-generated interpretation, omission, or contrary statement
+does not grant additional rights.
+
+5. Third-Party Materials
+
+Dependencies, referenced projects, and third-party test fixtures remain subject
+to their respective copyright notices and licenses. This license applies only
+to rights held by the copyright holder in the Software and does not restrict
+rights independently granted by third parties.
+
+6. Separate permission
+
+Any use outside Personal Use requires a separate written license from the
+copyright holder. Silence, source availability, issue participation, or pull
+request acceptance does not constitute permission.
+
+7. Termination
+
+Permission under this license terminates automatically upon breach. On
+termination, you must stop using the Software and delete all copies and
+modifications in your possession or control, except where retention is required
+by law.
+
+8. No warranty and limitation of liability
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE, TITLE, AND NON-INFRINGEMENT. TO THE MAXIMUM EXTENT
+PERMITTED BY LAW, THE COPYRIGHT HOLDER SHALL NOT BE LIABLE FOR ANY CLAIM,
+DAMAGES, OR OTHER LIABILITY ARISING FROM OR RELATED TO THE SOFTWARE OR ITS USE.
