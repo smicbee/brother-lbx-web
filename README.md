@@ -42,6 +42,48 @@ const job = await pngToQlRasterJob(png, {
 console.log(walkObjects(document).map((object) => [object.kind, object.name]));
 ```
 
+## Cross-platform b-PAC compatibility API
+
+The package also provides a browser-safe subset of Brother b-PAC's `IDocument`,
+`IObject`, and `IPrinter` APIs. It uses the LBX parser and bundled media registry
+directly; it does not load COM, `bpac.dll`, P-touch Editor, or a Brother Windows
+driver.
+
+```ts
+import { readFile } from 'node:fs/promises';
+import { BpacDocument } from 'brother-lbx-web';
+
+const bpac = BpacDocument.open(
+  new Uint8Array(await readFile('template.lbx')),
+);
+
+bpac.GetObject('product')!.Text = 'Coffee & Tea';
+bpac.GetObject('barcode')!.SetData('ABC123');
+
+console.log(bpac.GetMediaId());                 // 259
+console.log(bpac.GetMediaName());               // 62mm continuous (DK-22205)
+console.log(bpac.GetPrinter().GetSupportedMediaIds());
+
+// Change to DK-11201 and proportionally fit recursive object geometry.
+if (!bpac.SetMediaByName('DK-11201', true)) {
+  throw new Error('Media is unknown or incompatible with this printer');
+}
+
+const svg = bpac.renderToSvg();
+```
+
+Both idiomatic camel-case methods (`getObject`, `setMediaById`) and b-PAC-style
+aliases (`GetObject`, `SetMediaById`) are available. `BpacPrinter` currently
+models the QL-820NWB/QL-820NWBc capability profile and returns the 19 standard-
+width DK entries from the bundled registry; wide DK and PT media are excluded.
+If an LBX has no numeric `format`, the layer can infer known DK media from its
+paper dimensions and one-/two-color flag.
+
+This is **source/API compatibility, not binary COM compatibility**. Installed-
+printer enumeration, online state, the physically loaded roll, status packets,
+and sending a print job require an explicit USB/TCP/WebUSB adapter. The library
+will not fabricate those live capabilities from its static registry.
+
 ## Parser
 
 - Supports `style:paper`, recursive `image:image`, `barcode:barcode`, `draw:poly` lines, `table:table`, `table:cell`, nested `text:text` and `datetime:datetime`, and top-level `text:text` objects.
