@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { zipSync } from 'fflate';
+import { encode as encodeBmp } from 'bmp-js';
 import { parseLBX, setObject, walkObjects } from '../src/parser.js';
 import { escapeXml, renderToSvg } from '../src/svg.js';
 import { renderSvgToPng, pngToQlRasterJob, pngToRawImageData } from '../src/node.js';
@@ -23,12 +24,15 @@ describe('LBX parser and bindings', () => {
   it('parses the real fixture image, barcode, and nested table contents', async () => {
     const document = await loadFixture();
     expect(document.objects.map((object) => object.kind)).toEqual(['image', 'barcode', 'table']);
+    expect(document.objects[0]).toMatchObject({ kind: 'image', name: 'Image8', resourceName: 'Object0.jpg' });
+    expect(document.objects[1]).toMatchObject({ kind: 'barcode', name: 'barcode', protocol: 'CODE39' });
+    const table = document.objects.find((object) => object.kind === 'table');
+    expect(table?.kind === 'table' ? table.cells : []).toHaveLength(8);
     expect(document.resources['Object0.jpg']?.mime).toBe('image/jpeg');
     expect(document.resources['Object0.jpg']?.bytes.length).toBeGreaterThan(1000);
     const nested = walkObjects(document);
-    expect(nested.some((object) => object.kind === 'text' && object.name === 'product')).toBe(true);
-    expect(nested.some((object) => object.kind === 'datetime' && object.name === 'date')).toBe(true);
-    expect(nested.some((object) => object.kind === 'text' && object.name === 'weight')).toBe(true);
+    for (const name of ['product', 'price', 'weight', 'date']) expect(nested.some((object) => object.name === name)).toBe(true);
+    for (const label of ['Product:', 'Price:', 'Packed On:', 'Weight:']) expect(nested.some((object) => object.kind === 'text' && object.value === label)).toBe(true);
     expect(setObject(document, 'product', 'Coffee & Tea')).toBe(true);
     expect(setObject(document, 'barcode', 'ABC123')).toBe(true);
     expect(setObject(document, 'date', '2026-07-20')).toBe(true);
@@ -62,6 +66,21 @@ describe('SVG safety and rendering', () => {
     const svg = renderToSvg(document);
     expect(svg).toContain('a &amp; b &lt;c&gt;');
     expect(svg).not.toContain('a & b');
+  });
+
+  it('renders known children nested inside an unsupported group', () => {
+    const document = parseLBX(tinyLbx('<draw:group><pt:objectStyle x="0pt" y="0pt" width="90pt" height="30pt"/><text:text><pt:objectStyle x="2pt" y="2pt" width="50pt" height="15pt"/><pt:data>nested</pt:data></text:text></draw:group>'));
+    const svg = renderToSvg(document);
+    expect(document.warnings.some((warning) => warning.tag === 'draw:group')).toBe(true);
+    expect(svg).toContain('unsupported LBX XML object draw:group');
+    expect(svg).toContain('>nested<');
+  });
+
+  it('renders table labels and CODE39 as bars for the real fixture', async () => {
+    const svg = renderToSvg(await loadFixture());
+    for (const label of ['Product:', 'Price:', 'Packed On:', 'Weight:']) expect(svg).toContain(label);
+    expect(svg).toContain('data-lbx-table=');
+    expect((svg.match(/<rect /g) ?? []).length).toBeGreaterThan(20);
   });
 });
 
@@ -101,7 +120,33 @@ describe('public internet LBX fixtures', () => {
 
     const raster = await pngToQlRasterJob(png);
     expect(raster.length).toBeGreaterThan(1000);
-    expect(Buffer.from(raster).includes(Buffer.from([0x1b, 0x40]))).toBe(true);
-    expect(Buffer.from(raster).includes(Buffer.from([0x1b, 0x69, 0x7a]))).toBe(true);
+    const rasterBuffer = Buffer.from(raster);
+    const initializeAt = rasterBuffer.indexOf(Buffer.from([0x1b, 0x40]));
+    const rasterModeAt = rasterBuffer.indexOf(Buffer.from([0x1b, 0x69, 0x61, 0x01]), initializeAt + 2);
+    const printInformationAt = rasterBuffer.indexOf(Buffer.from([0x1b, 0x69, 0x7a]));
+    expect(initializeAt).toBeGreaterThanOrEqual(0);
+    expect(rasterModeAt).toBeGreaterThan(initializeAt);
+    expect(printInformationAt).toBeGreaterThan(rasterModeAt);
+    expect(rasterBuffer.includes(Buffer.from([0x67, 0x00]))).toBe(true);
+    expect(rasterBuffer.includes(Buffer.from([0x1a])) || rasterBuffer.includes(Buffer.from([0x0c]))).toBe(true);
+    await expect(pngToQlRasterJob(png, { mediaId: 999999 })).rejects.toThrow(/Unknown Brother media id/);
+    await expect(pngToQlRasterJob(png, { printer: 'not-a-printer' as never })).rejects.toThrow(/Unsupported printer/);
+  });
+
+  it('renders a 24-bit BMP with opaque alpha and preserved colors', async () => {
+    const bmp = encodeBmp({
+      width: 2,
+      height: 1,
+      data: Buffer.from([
+        255, 0, 0, 255,
+        255, 0, 255, 0,
+      ]),
+    }).data;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="2" height="1" viewBox="0 0 2 1"><image width="2" height="1" preserveAspectRatio="none" href="data:image/bmp;base64,${bmp.toString('base64')}"/></svg>`;
+    const raw = await pngToRawImageData(await renderSvgToPng(svg, { fitWidth: 20 }));
+    const pixels = Array.from({ length: raw.width * raw.height }, (_, index) => Array.from(raw.data.slice(index * 4, index * 4 + 4)));
+    expect(pixels.every((pixel) => pixel[3] === 255)).toBe(true);
+    expect(pixels.some(([red, green, blue]) => red > 180 && green < 80 && blue < 80)).toBe(true);
+    expect(pixels.some(([red, green, blue]) => green > 180 && red < 80 && blue < 80)).toBe(true);
   });
 });

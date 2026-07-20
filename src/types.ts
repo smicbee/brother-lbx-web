@@ -120,7 +120,7 @@ export interface SvgRenderOptions {
 
 export interface QlRasterOptions {
   mediaId?: number;
-  printer?: 'QL-820NWB' | string;
+  printer?: 'QL-820NWB' | 'QL-820NWBc';
   copies?: number;
   autoCut?: boolean;
   cutAtEnd?: boolean;

@@ -124,7 +124,7 @@ function renderOne(object: LbxObject, options: SvgRenderOptions): string {
     case 'barcode': return renderBarcode(object);
     case 'datetime': return renderDateTime(object);
     case 'table': return renderTable(object, options, (child) => renderOne(child, options));
-    case 'unknown': return `<!-- unsupported LBX XML object ${escapeXml(object.tag)} at ${escapeXml(object.path)} -->`;
+    case 'unknown': return `<!-- unsupported LBX XML object ${escapeXml(object.tag)} at ${escapeXml(object.path)} -->${object.children.map((child) => renderOne(child, options)).join('')}`;
   }
 }
 
