@@ -1,0 +1,51 @@
+{
+  "name": "brother-lbx-web",
+  "version": "0.1.0",
+  "description": "Cross-platform MVP parser, SVG/PNG renderer, and Brother QL raster encoder for Brother P-touch LBX templates.",
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "lbx-render": "./dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./node": {
+      "types": "./dist/node.d.ts",
+      "import": "./dist/node.js"
+    },
+    "./browser": {
+      "types": "./dist/browser.d.ts",
+      "import": "./dist/browser.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "cli": "node dist/cli.js"
+  },
+  "dependencies": {
+    "@thermal-label/brother-ql-core": "0.6.1",
+    "@thermal-label/brother-ql-web": "^0.6.1",
+    "@xmldom/xmldom": "^0.9.10",
+    "bmp-js": "^0.1.0",
+    "fflate": "^0.8.3",
+    "sharp": "^0.33.5"
+  },
+  "optionalDependencies": {
+    "@resvg/resvg-js": "^2.6.2"
+  },
+  "devDependencies": {
+    "@types/bmp-js": "^0.1.2",
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2",
+    "vitest": "^4.1.10"
+  }
+}
