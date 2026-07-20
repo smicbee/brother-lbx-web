@@ -161,6 +161,7 @@ describe('public internet LBX fixtures', () => {
     expect(rasterBuffer.includes(Buffer.from([0x67, 0x00]))).toBe(true);
     expect(rasterBuffer.includes(Buffer.from([0x1a])) || rasterBuffer.includes(Buffer.from([0x0c]))).toBe(true);
     await expect(pngToQlRasterJob(png, { mediaId: 999999 })).rejects.toThrow(/Unknown Brother media id/);
+    await expect(pngToQlRasterJob(png, { mediaId: 260 })).rejects.toThrow(/wide DK printer/);
     await expect(pngToQlRasterJob(png, { printer: 'not-a-printer' as never })).rejects.toThrow(/Unsupported printer/);
     await expect(pngToQlRasterJob(png, { copies: 0 })).rejects.toThrow(/copies must be an integer/);
     await expect(pngToQlRasterJob(png, { copies: -1 })).rejects.toThrow(/copies must be an integer/);

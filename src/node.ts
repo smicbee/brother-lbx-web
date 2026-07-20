@@ -100,6 +100,7 @@ function resolveMedia(mediaId?: number) {
   const media = findMedia(mediaId);
   if (!media) throw new Error(`Unknown Brother media id: ${mediaId}`);
   if (media.tapeSystem !== 'dk') throw new Error(`Media id ${mediaId} is not compatible with QL-820NWB DK media`);
+  if (!media.targetModels?.includes('dk')) throw new Error(`Media id ${mediaId} requires a wide DK printer and is not compatible with QL-820NWB`);
   return media;
 }
 
