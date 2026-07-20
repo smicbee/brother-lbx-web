@@ -7,6 +7,27 @@ export interface PngRenderOptions {
   fitWidth?: number;
 }
 
+const MAX_IMAGE_PIXELS = 25_000_000;
+
+function assertPixelDimensions(width: number | undefined, height: number | undefined, context: string): asserts width is number {
+  if (!width || !height || !Number.isSafeInteger(width) || !Number.isSafeInteger(height) || width <= 0 || height <= 0 || width * height > MAX_IMAGE_PIXELS) {
+    throw new Error(`${context} exceeds the ${MAX_IMAGE_PIXELS}-pixel safety limit`);
+  }
+}
+
+function validateSvgCanvas(svg: string, options: PngRenderOptions): void {
+  const match = svg.match(/\bviewBox\s*=\s*["']\s*[-+\d.eE]+\s+[-+\d.eE]+\s+([-+\d.eE]+)\s+([-+\d.eE]+)\s*["']/i);
+  if (!match) return;
+  const width = Number.parseFloat(match[1] ?? '');
+  const height = Number.parseFloat(match[2] ?? '');
+  if (!(width > 0) || !(height > 0)) throw new Error('SVG has invalid viewBox dimensions');
+  const outputWidth = options.fitWidth ?? width * ((options.dpi ?? 300) / 72);
+  const outputHeight = outputWidth * height / width;
+  if (!Number.isFinite(outputWidth) || !Number.isFinite(outputHeight) || outputWidth * outputHeight > MAX_IMAGE_PIXELS) {
+    throw new Error(`SVG output exceeds the ${MAX_IMAGE_PIXELS}-pixel safety limit`);
+  }
+}
+
 async function normalizeEmbeddedBmpForResvg(svg: string): Promise<string> {
   const matches = [...svg.matchAll(/data:image\/bmp;base64,([A-Za-z0-9+/=]+)/g)];
   if (!matches.length) return svg;
@@ -18,7 +39,13 @@ async function normalizeEmbeddedBmpForResvg(svg: string): Promise<string> {
     const encoded = match[1];
     if (!encoded) continue;
     const bmpModule = await import('bmp-js');
-    const decoded = bmpModule.decode(Buffer.from(encoded, 'base64'));
+    const bmpBytes = Buffer.from(encoded, 'base64');
+    if (bmpBytes.length < 26 || bmpBytes[0] !== 0x42 || bmpBytes[1] !== 0x4d) throw new Error('Embedded BMP has an invalid header');
+    const headerWidth = Math.abs(bmpBytes.readInt32LE(18));
+    const headerHeight = Math.abs(bmpBytes.readInt32LE(22));
+    assertPixelDimensions(headerWidth, headerHeight, 'Embedded BMP');
+    const decoded = bmpModule.decode(bmpBytes);
+    assertPixelDimensions(decoded.width, decoded.height, 'Embedded BMP');
     const rgba = Buffer.alloc(decoded.width * decoded.height * 4);
     const preserveAlpha = decoded.bitPP === 32 && decoded.data.some((value, index) => index % 4 === 0 && value !== 0);
     for (let source = 0, target = 0; source < decoded.data.length; source += 4, target += 4) {
@@ -35,7 +62,21 @@ async function normalizeEmbeddedBmpForResvg(svg: string): Promise<string> {
   return normalized;
 }
 
+async function validateEmbeddedRasterImages(svg: string): Promise<void> {
+  const matches = [...svg.matchAll(/data:image\/(png|jpe?g);base64,([A-Za-z0-9+/=]+)/gi)];
+  if (!matches.length) return;
+  const sharp = (await import('sharp')).default;
+  for (const match of matches) {
+    const encoded = match[2];
+    if (!encoded) continue;
+    const metadata = await sharp(Buffer.from(encoded, 'base64'), { limitInputPixels: MAX_IMAGE_PIXELS }).metadata();
+    assertPixelDimensions(metadata.width, metadata.height, `Embedded ${match[1]?.toUpperCase() ?? 'image'}`);
+  }
+}
+
 export async function renderSvgToPng(svg: string, options: PngRenderOptions = {}): Promise<Uint8Array> {
+  validateSvgCanvas(svg, options);
+  await validateEmbeddedRasterImages(svg);
   const { Resvg } = await import('@resvg/resvg-js');
   const dpi = options.dpi ?? 300;
   const normalizedSvg = await normalizeEmbeddedBmpForResvg(svg);
@@ -45,7 +86,8 @@ export async function renderSvgToPng(svg: string, options: PngRenderOptions = {}
 
 export async function pngToRawImageData(png: Uint8Array): Promise<RawImageData> {
   const sharpModule = await import('sharp');
-  const result = await sharpModule.default(png).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const result = await sharpModule.default(png, { limitInputPixels: MAX_IMAGE_PIXELS }).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  assertPixelDimensions(result.info.width, result.info.height, 'PNG');
   return { width: result.info.width, height: result.info.height, data: new Uint8Array(result.data) };
 }
 
@@ -70,6 +112,10 @@ function resolvePrinter(printer = 'QL-820NWB') {
 }
 
 export async function rawImageDataToQlRasterJob(raw: RawImageData, options: QlRasterOptions = {}): Promise<Uint8Array> {
+  assertPixelDimensions(raw.width, raw.height, 'Raw label image');
+  if (raw.data.byteLength !== raw.width * raw.height * 4) throw new Error('Raw label image data length does not match RGBA dimensions');
+  const copies = options.copies ?? 1;
+  if (!Number.isInteger(copies) || copies < 1 || copies > 999) throw new Error('copies must be an integer between 1 and 999');
   const media = resolveMedia(options.mediaId);
   const { device, engine } = resolvePrinter(options.printer);
   const bitmap = renderImage(raw, { dither: 'floyd-steinberg' });
@@ -82,7 +128,7 @@ export async function rawImageDataToQlRasterJob(raw: RawImageData, options: QlRa
       marginDots: options.marginDots ?? 35,
       compress: true,
     },
-  }], { copies: options.copies ?? 1 }, engine, device.name);
+  }], { copies }, engine, device.name);
 }
 
 export async function pngToQlRasterJob(png: Uint8Array, options: QlRasterOptions = {}): Promise<Uint8Array> {
@@ -92,6 +138,7 @@ export async function pngToQlRasterJob(png: Uint8Array, options: QlRasterOptions
   const targetWidth = media.printableDots ?? 696;
   if (raw.width === targetWidth) return rawImageDataToQlRasterJob(raw, options);
   const sharpModule = await import('sharp');
-  const resized = await sharpModule.default(png).resize({ width: targetWidth, fit: 'contain', background: '#ffffff' }).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const resized = await sharpModule.default(png, { limitInputPixels: MAX_IMAGE_PIXELS }).resize({ width: targetWidth, fit: 'contain', background: '#ffffff' }).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  assertPixelDimensions(resized.info.width, resized.info.height, 'Resized label');
   return rawImageDataToQlRasterJob({ width: resized.info.width, height: resized.info.height, data: new Uint8Array(resized.data) }, options);
 }

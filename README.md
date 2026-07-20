@@ -38,15 +38,15 @@ console.log(walkObjects(document).map((object) => [object.kind, object.name]));
 - `pt:expanded/@objectName` wird als `name` erhalten. `setObject`/`setObjects` ersetzen Text, Barcode und Datum.
 - Ressourcen (`jpg`, `jpeg`, `png`, `bmp`) werden als `Uint8Array` mit MIME-Typ gespeichert.
 - Unbekannte direkte oder rekursive Objekte bleiben als `unknown` mit `rawXml` erhalten und erzeugen Warnungen mit XML-Tag und Pfad; bekannte Kinder darin werden weiterhin gerendert.
-- Vor dem Entpacken wird das ZIP-Zentralverzeichnis geprüft: keine absoluten/`..`-Pfade, keine Verschlüsselung/ZIP64/Multi-Disk-Archive sowie feste Grenzen für Eintragszahl, komprimierte Größe, Einzeldateien, XML und expandierte Gesamtgröße.
+- Vor dem Entpacken wird das ZIP-Zentralverzeichnis geprüft: keine absoluten/`..`-Pfade, keine Verschlüsselung/ZIP64/Multi-Disk-Archive sowie feste Grenzen für Eintragszahl, komprimierte Größe, Einzeldateien, XML und expandierte Gesamtgröße. Vor dem DOM-Aufbau gelten zusätzlich Grenzen für XML-Knotenzahl und Verschachtelungstiefe.
 
 ### SVG
 
-Die Ausgabe verwendet LBX-Punkte (`1 pt = 1/72 inch`) im ViewBox, unterstützt Text, UTF-8/XML-Escaping, Bilder als Data-URL, CODE39, Datum, Tabellenrahmen/Zelltexte und Objektrotation. Bei Landscape-Vorlagen werden Bandbreite und Etikettenlänge korrekt auf die SVG-Achsen abgebildet; bei `autoLength=true` wird die riesige P-touch-Platzhalterlänge durch den tatsächlichen Objektumfang plus Nachlauf ersetzt. Der MVP verwendet SVG-Schriftfallbacks; pixelgenaue Brother-/Windows-Schriftmetriken sind nicht garantiert.
+Die Ausgabe verwendet LBX-Punkte (`1 pt = 1/72 inch`) im ViewBox, unterstützt Text, UTF-8/XML-Escaping, Bilder als Data-URL, CODE39 einschließlich deklariertem Wide/Narrow-Verhältnis, Datum, Tabellenrahmen/Zelltexte und Objektrotation. Bei Landscape-Vorlagen werden Bandbreite und Etikettenlänge korrekt auf die SVG-Achsen abgebildet; bei `autoLength=true` wird die riesige P-touch-Platzhalterlänge durch den tatsächlichen Objektumfang plus Nachlauf ersetzt. Der MVP verwendet SVG-Schriftfallbacks; pixelgenaue Brother-/Windows-Schriftmetriken sind nicht garantiert.
 
 ### Node-PNG und QL-Raster
 
-`brother-lbx-web/node` nutzt `@resvg/resvg-js` für PNG und `sharp` zur Umwandlung in RGBA-`RawImageData`. Eingebettete 24-/32-Bit-BMP-Ressourcen werden vor der resvg-Rasterisierung über `bmp-js` nach RGBA/PNG normalisiert; unbenutzte Null-Alpha-Paddingbytes werden dabei als opak behandelt. Die Rasterjob-Erzeugung nutzt `@thermal-label/brother-ql-core@0.6.1` und dessen registriertes QL-62-mm-Medium. Unbekannte Druckermodelle oder Media-IDs werden abgelehnt statt still auf Defaults zu fallen. Der Rasterjob ist offline testbar und enthält keine USB- oder TCP-Seiteneffekte.
+`brother-lbx-web/node` nutzt `@resvg/resvg-js` für PNG und `sharp` zur Umwandlung in RGBA-`RawImageData`. Eingebettete 24-/32-Bit-BMP-Ressourcen werden vor der resvg-Rasterisierung über `bmp-js` nach RGBA/PNG normalisiert; unbenutzte Null-Alpha-Paddingbytes werden dabei als opak behandelt. SVG-Ausgabe, eingebettete Rasterbilder und dekodierte PNG-/RGBA-Daten unterliegen einem Pixel-Limit. Die Rasterjob-Erzeugung nutzt `@thermal-label/brother-ql-core@0.6.1` und dessen registriertes QL-62-mm-Medium. Unbekannte Druckermodelle oder Media-IDs sowie ungültige Kopienzahlen werden abgelehnt statt still auf Defaults zu fallen. Der Rasterjob ist offline testbar und enthält keine USB- oder TCP-Seiteneffekte.
 
 ### Browser/WebUSB
 

@@ -38,7 +38,19 @@ function base64(bytes: Uint8Array): string {
     for (let offset = 0; offset < bytes.length; offset += chunk) binary += String.fromCharCode(...bytes.subarray(offset, offset + chunk));
     return btoa(binary);
   }
-  return Buffer.from(bytes).toString('base64');
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+  let encoded = '';
+  for (let index = 0; index < bytes.length; index += 3) {
+    const first = bytes[index] ?? 0;
+    const second = bytes[index + 1];
+    const third = bytes[index + 2];
+    const triple = (first << 16) | ((second ?? 0) << 8) | (third ?? 0);
+    encoded += alphabet[(triple >>> 18) & 63] ?? '';
+    encoded += alphabet[(triple >>> 12) & 63] ?? '';
+    encoded += second === undefined ? '=' : (alphabet[(triple >>> 6) & 63] ?? '');
+    encoded += third === undefined ? '=' : (alphabet[triple & 63] ?? '');
+  }
+  return encoded;
 }
 
 function imageHref(resource: LbxResource, options: SvgRenderOptions): string {
@@ -74,31 +86,42 @@ function renderImage(object: LbxImageObject): string {
   return `<image ${rectAttrs(object.bounds)} href="${imageHref(object.resource, {})}" preserveAspectRatio="none"${transform(object.bounds, object.angle)} />`;
 }
 
-function code39Bars(value: string): string[] {
+interface Code39Element { bar: boolean; width: number }
+
+function code39WideRatio(raw: string): number {
+  const [narrowRaw, wideRaw] = raw.split(':');
+  const narrow = Number.parseFloat(narrowRaw ?? '');
+  const wide = Number.parseFloat(wideRaw ?? '');
+  const ratio = wide / narrow;
+  return Number.isFinite(ratio) && ratio >= 1.5 && ratio <= 4 ? ratio : 3;
+}
+
+function code39Elements(value: string, wideRatio: number): Code39Element[] {
   const payload = `*${value.toUpperCase()}*`;
   if ([...payload].some((character) => !CODE39[character])) return [];
-  const bars: string[] = [];
+  const elements: Code39Element[] = [];
   [...payload].forEach((character, charIndex) => {
     const pattern = CODE39[character];
-    [...pattern].forEach((width, index) => bars.push(...Array(width === 'w' ? 3 : 1).fill(index % 2 === 0 ? 'bar' : 'space')));
-    if (charIndex !== payload.length - 1) bars.push('space');
+    [...pattern].forEach((width, index) => elements.push({ bar: index % 2 === 0, width: width === 'w' ? wideRatio : 1 }));
+    if (charIndex !== payload.length - 1) elements.push({ bar: false, width: 1 });
   });
-  return bars;
+  return elements;
 }
 
 function renderBarcode(object: LbxBarcodeObject): string {
   if (object.protocol.toUpperCase() !== 'CODE39') return `<text x="${fmt(object.bounds.x)}" y="${fmt(object.bounds.y + object.bounds.height / 2)}" font-size="10">${escapeXml(object.value)}</text>`;
-  const bars = code39Bars(object.value);
-  if (!bars.length) return `<text ${rectAttrs(object.bounds)}>${escapeXml(object.value)}</text>`;
+  const elements = code39Elements(object.value, code39WideRatio(object.barRatio));
+  if (!elements.length) return `<text ${rectAttrs(object.bounds)}>${escapeXml(object.value)}</text>`;
   const unit = Math.max(0.2, object.barWidth);
-  const total = bars.length * unit;
+  const total = elements.reduce((sum, element) => sum + element.width * unit, 0);
   const scale = Math.min(1, object.bounds.width / total);
   const barHeight = object.humanReadable ? object.bounds.height * 0.78 : object.bounds.height;
   let x = object.bounds.x + Math.max(0, (object.bounds.width - total * scale) / 2);
   const paths: string[] = [];
-  for (const item of bars) {
-    if (item === 'bar') paths.push(`<rect x="${fmt(x)}" y="${fmt(object.bounds.y)}" width="${fmt(unit * scale)}" height="${fmt(barHeight)}" />`);
-    x += unit * scale;
+  for (const element of elements) {
+    const width = element.width * unit * scale;
+    if (element.bar) paths.push(`<rect x="${fmt(x)}" y="${fmt(object.bounds.y)}" width="${fmt(width)}" height="${fmt(barHeight)}" />`);
+    x += width;
   }
   const label = object.humanReadable ? `<text x="${fmt(object.bounds.x + object.bounds.width / 2)}" y="${fmt(object.bounds.y + object.bounds.height - 1)}" text-anchor="middle" font-family="monospace" font-size="${fmt(Math.min(10, object.bounds.height * 0.18))}">${escapeXml(object.value)}</text>` : '';
   return `<g${transform(object.bounds, object.angle)} fill="#000000">${paths.join('')}${label}</g>`;

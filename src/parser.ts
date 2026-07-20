@@ -17,7 +17,67 @@ const ARCHIVE_LIMITS = {
   entryBytes: 64 * 1024 * 1024,
   expandedBytes: 128 * 1024 * 1024,
   xmlBytes: 8 * 1024 * 1024,
+  xmlDepth: 256,
+  xmlNodes: 100_000,
 } as const;
+
+function xmlTagEnd(xml: string, start: number): number {
+  let quote = '';
+  for (let index = start; index < xml.length; index += 1) {
+    const character = xml[index];
+    if (quote) {
+      if (character === quote) quote = '';
+    } else if (character === '"' || character === "'") quote = character;
+    else if (character === '>') return index;
+  }
+  throw new Error('LBX XML contains an unterminated tag');
+}
+
+/** Reject hostile/deep XML before constructing a DOM or entering recursive AST parsing. */
+function validateXmlComplexity(xml: string): void {
+  let cursor = 0;
+  let depth = 0;
+  let nodes = 0;
+  while (cursor < xml.length) {
+    const start = xml.indexOf('<', cursor);
+    if (start < 0) break;
+    if (xml.startsWith('<!--', start)) {
+      const end = xml.indexOf('-->', start + 4);
+      if (end < 0) throw new Error('LBX XML contains an unterminated comment');
+      cursor = end + 3;
+      continue;
+    }
+    if (xml.startsWith('<![CDATA[', start)) {
+      const end = xml.indexOf(']]>', start + 9);
+      if (end < 0) throw new Error('LBX XML contains unterminated CDATA');
+      cursor = end + 3;
+      continue;
+    }
+    if (xml.startsWith('<?', start)) {
+      const end = xml.indexOf('?>', start + 2);
+      if (end < 0) throw new Error('LBX XML contains an unterminated processing instruction');
+      cursor = end + 2;
+      continue;
+    }
+    if (xml.startsWith('<!', start)) throw new Error('LBX XML declarations/DOCTYPE are not supported');
+    const end = xmlTagEnd(xml, start + 1);
+    if (xml.startsWith('</', start)) {
+      depth -= 1;
+      if (depth < 0) throw new Error('LBX XML has unbalanced closing tags');
+    } else {
+      nodes += 1;
+      if (nodes > ARCHIVE_LIMITS.xmlNodes) throw new Error('LBX XML exceeds node-count limit');
+      let tail = end - 1;
+      while (tail > start && /\s/.test(xml[tail] ?? '')) tail -= 1;
+      if (xml[tail] !== '/') {
+        depth += 1;
+        if (depth > ARCHIVE_LIMITS.xmlDepth) throw new Error('LBX XML exceeds nesting-depth limit');
+      }
+    }
+    cursor = end + 1;
+  }
+  if (depth !== 0) throw new Error('LBX XML has unbalanced element depth');
+}
 
 function safeEntryName(name: string): boolean {
   return !name.startsWith('/') && !name.startsWith('\\') && !/^[A-Za-z]:/.test(name)
@@ -331,18 +391,28 @@ export function parseLBX(input: Uint8Array | ArrayBuffer): LbxDocument {
     resources[name] = { name, bytes: new Uint8Array(labelBytes === entries[name] ? entries[name].slice() : entries[name]), mime: resourceMime(name, entries[name]) };
   }
   const xml = new TextDecoder().decode(labelBytes);
-  const parsed = new DOMParser().parseFromString(xml, 'text/xml');
+  validateXmlComplexity(xml);
+  const parseErrors: string[] = [];
+  const parsed = new DOMParser({
+    onError: (level, message) => {
+      if (level !== 'warning') parseErrors.push(String(message));
+    },
+  }).parseFromString(xml, 'text/xml');
+  if (parseErrors.length) throw new Error(`Invalid LBX label.xml: ${parseErrors[0]}`);
   const root = parsed.documentElement as XmlElement;
   if (!root) throw new Error('LBX label.xml has no document element');
   const warnings: LbxWarning[] = [];
   const objectsRoot = Array.from(root.getElementsByTagName('*')).find((element) => localName(element as XmlElement) === 'objects') as XmlElement | undefined;
-  const objects = objectsRoot ? parseContainerObjects(objectsRoot, '/pt:objects', resources, warnings) : [];
+  if (!objectsRoot) throw new Error('LBX label.xml has no objects container');
+  const paper = parsePaper(root);
+  if (!(paper.width > 0) || !(paper.height > 0)) throw new Error('LBX label.xml has invalid paper dimensions');
+  const objects = parseContainerObjects(objectsRoot, '/pt:objects', resources, warnings);
   const metadata: Record<string, string> = {};
   for (const attr of ['version', 'generator']) {
     const value = root.getAttribute(attr);
     if (value) metadata[attr] = value;
   }
-  return { paper: parsePaper(root), objects, resources, warnings, sourceFiles: names, metadata };
+  return { paper, objects, resources, warnings, sourceFiles: names, metadata };
 }
 
 export async function parseLBXAsync(input: LbxInput | Blob): Promise<LbxDocument> {

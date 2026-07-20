@@ -57,6 +57,16 @@ describe('LBX parser and bindings', () => {
     const archive = zipSync({ 'label.xml': oversized }, { level: 9 });
     expect(() => parseLBX(archive)).toThrow(/label\.xml exceeds XML size limit/);
   });
+
+  it('rejects deeply nested XML before DOM or recursive AST parsing', () => {
+    const nested = `${'<draw:group>'.repeat(300)}${'</draw:group>'.repeat(300)}`;
+    expect(() => parseLBX(tinyLbx(nested))).toThrow(/nesting-depth limit/);
+  });
+
+  it('requires valid paper dimensions and an objects container', () => {
+    const missingObjects = zipSync({ 'label.xml': new TextEncoder().encode('<?xml version="1.0"?><pt:document xmlns:pt="urn:pt"><pt:body/></pt:document>') });
+    expect(() => parseLBX(missingObjects)).toThrow(/no objects container/);
+  });
 });
 
 describe('SVG safety and rendering', () => {
@@ -81,6 +91,27 @@ describe('SVG safety and rendering', () => {
     for (const label of ['Product:', 'Price:', 'Packed On:', 'Weight:']) expect(svg).toContain(label);
     expect(svg).toContain('data-lbx-table=');
     expect((svg.match(/<rect /g) ?? []).length).toBeGreaterThan(20);
+  });
+
+  it('uses the declared CODE39 wide-to-narrow bar ratio', () => {
+    const document = parseLBX(tinyLbx('<barcode:barcode xmlns:barcode="http://schemas.brother.info/ptouch/2007/lbx/barcode"><pt:objectStyle x="0pt" y="0pt" width="90pt" height="20pt"/><barcode:barcodeStyle protocol="CODE39" barWidth="1pt" barRatio="1:2" humanReadable="false"/><pt:data>A</pt:data></barcode:barcode>'));
+    const svg = renderToSvg(document);
+    const widths = [...svg.matchAll(/<rect x="[^"]+" y="0" width="([\d.]+)" height="20"/g)].map((match) => Number.parseFloat(match[1] ?? ''));
+    expect(widths.length).toBeGreaterThan(5);
+    expect(Math.max(...widths) / Math.min(...widths)).toBeCloseTo(2, 4);
+  });
+
+  it('encodes image resources without requiring Buffer in the browser core', async () => {
+    const document = await loadFixture();
+    const expected = Buffer.from(document.resources['Object0.jpg']!.bytes).toString('base64');
+    const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'btoa');
+    try {
+      Object.defineProperty(globalThis, 'btoa', { value: undefined, configurable: true, writable: true });
+      expect(renderToSvg(document)).toContain(`data:image/jpeg;base64,${expected}`);
+    } finally {
+      if (descriptor) Object.defineProperty(globalThis, 'btoa', descriptor);
+      else Reflect.deleteProperty(globalThis, 'btoa');
+    }
   });
 });
 
@@ -131,6 +162,21 @@ describe('public internet LBX fixtures', () => {
     expect(rasterBuffer.includes(Buffer.from([0x1a])) || rasterBuffer.includes(Buffer.from([0x0c]))).toBe(true);
     await expect(pngToQlRasterJob(png, { mediaId: 999999 })).rejects.toThrow(/Unknown Brother media id/);
     await expect(pngToQlRasterJob(png, { printer: 'not-a-printer' as never })).rejects.toThrow(/Unsupported printer/);
+    await expect(pngToQlRasterJob(png, { copies: 0 })).rejects.toThrow(/copies must be an integer/);
+    await expect(pngToQlRasterJob(png, { copies: -1 })).rejects.toThrow(/copies must be an integer/);
+  });
+
+  it('rejects an SVG canvas that would exceed the decoded-pixel limit', async () => {
+    const huge = '<svg xmlns="http://www.w3.org/2000/svg" width="10000pt" height="10000pt" viewBox="0 0 10000 10000"/>';
+    await expect(renderSvgToPng(huge, { dpi: 300 })).rejects.toThrow(/pixel safety limit/);
+  });
+
+  it('rejects oversized BMP dimensions before decoding pixel memory', async () => {
+    const bmp = Buffer.from(encodeBmp({ width: 1, height: 1, data: Buffer.from([255, 0, 0, 255]) }).data);
+    bmp.writeInt32LE(10_000, 18);
+    bmp.writeInt32LE(10_000, 22);
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"><image width="1" height="1" href="data:image/bmp;base64,${bmp.toString('base64')}"/></svg>`;
+    await expect(renderSvgToPng(svg, { fitWidth: 10 })).rejects.toThrow(/pixel safety limit/);
   });
 
   it('renders a 24-bit BMP with opaque alpha and preserved colors', async () => {
