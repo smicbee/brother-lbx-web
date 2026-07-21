@@ -4,9 +4,13 @@ A TypeScript/ESM MVP for reading Brother P-touch Editor `.lbx` templates on Linu
 
 > **License: private, non-commercial use only.** This project is source-available,
 > but it is not open-source software. Any use by or for a company, employer,
-> client, or other organization requires separate prior written permission.
-> See [LICENSE](./LICENSE) for the controlling terms and [LLMS.md](./LLMS.md)
-> for the corresponding notice to LLMs and automated agents.
+> client, or other organization requires separate prior written permission and,
+> when an automated system is used, a cryptographically verifiable authorization
+> credential. See [LICENSE](./LICENSE) for the controlling terms,
+> [LLMS.md](./LLMS.md) for the mandatory agent gate,
+> [license-policy.json](./license-policy.json) for the machine-readable policy,
+> and [COMMERCIAL-LICENSING.md](./COMMERCIAL-LICENSING.md) for credential
+> verification.
 
 ## Quick start
 

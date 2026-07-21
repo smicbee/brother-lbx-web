@@ -3,3 +3,11 @@ dist/
 artifacts/
 *.log
 .DS_Store
+
+# Commercial-license signing material and issued credentials must never be committed.
+**/license-signing-key.pem
+**/license-signing-key-*.pem
+commercial-license.json
+commercial-license.json.sig
+*.sig.bin
+authorization/issued/
