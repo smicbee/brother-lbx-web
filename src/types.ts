@@ -43,9 +43,32 @@ export interface LbxTextObject extends LbxObjectBase {
   value: string;
   fontFamily?: string;
   fontSize: number;
+  fontWeight: number;
+  italic: boolean;
+  underline: boolean;
+  strikeout: boolean;
   color: string;
-  horizontalAlign: 'LEFT' | 'CENTER' | 'RIGHT';
+  horizontalAlign: 'LEFT' | 'CENTER' | 'RIGHT' | 'JUSTIFY';
   verticalAlign: 'TOP' | 'CENTER' | 'BOTTOM';
+  control: string;
+  clipFrame: boolean;
+  shrink: boolean;
+  autoLineFeed: boolean;
+  charSpace: number;
+  lineSpace: number;
+  vertical: boolean;
+  runs: LbxTextRun[];
+}
+
+export interface LbxTextRun {
+  value: string;
+  fontFamily?: string;
+  fontSize: number;
+  fontWeight: number;
+  italic: boolean;
+  underline: boolean;
+  strikeout: boolean;
+  color: string;
 }
 
 export interface LbxBarcodeObject extends LbxObjectBase {
@@ -55,6 +78,13 @@ export interface LbxBarcodeObject extends LbxObjectBase {
   humanReadable: boolean;
   barWidth: number;
   barRatio: string;
+  qrCode?: {
+    model: number;
+    errorCorrectionLevel: string;
+    cellSize: number;
+    margin: boolean;
+    version?: number;
+  };
 }
 
 export interface LbxDateTimeObject extends LbxObjectBase {
@@ -72,6 +102,14 @@ export interface LbxImageObject extends LbxObjectBase {
   resourceName: string;
   resource?: LbxResource;
   originalName?: string;
+}
+
+export interface LbxPolyObject extends LbxObjectBase {
+  kind: 'poly';
+  shape: string;
+  points: Array<{ x: number; y: number }>;
+  stroke: string;
+  strokeWidth: number;
 }
 
 export interface LbxTableCell {
@@ -97,7 +135,7 @@ export interface LbxUnknownObject extends LbxObjectBase {
   rawXml: string;
 }
 
-export type LbxObject = LbxTextObject | LbxBarcodeObject | LbxDateTimeObject | LbxImageObject | LbxTableObject | LbxUnknownObject;
+export type LbxObject = LbxTextObject | LbxBarcodeObject | LbxDateTimeObject | LbxImageObject | LbxPolyObject | LbxTableObject | LbxUnknownObject;
 
 export interface LbxDocument {
   paper: LbxPaper;

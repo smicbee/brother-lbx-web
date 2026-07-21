@@ -44,8 +44,9 @@ console.log(walkObjects(document).map((object) => [object.kind, object.name]));
 
 ## Parser
 
-- Supports `style:paper`, recursive `image:image`, `barcode:barcode`, `table:table`, `table:cell`, nested `text:text` and `datetime:datetime`, and top-level `text:text` objects.
+- Supports `style:paper`, recursive `image:image`, `barcode:barcode`, `draw:poly` lines, `table:table`, `table:cell`, nested `text:text` and `datetime:datetime`, and top-level `text:text` objects.
 - Preserves `pt:expanded/@objectName` as `name`. `setObject` and `setObjects` replace named text, barcode, and date values.
+- Preserves Brother rich-text run font size, weight, italics, underline, strikeout, color, fixed-frame controls, clipping, alignment, and line spacing.
 - Stores embedded JPEG, PNG, and BMP resources as `Uint8Array` values with detected MIME types.
 - Preserves unknown direct or nested objects as `unknown` nodes with `rawXml`, XML tag/path diagnostics, and any recognized descendants.
 - Validates the ZIP central directory before extraction: no absolute or `..` paths, encryption, ZIP64, or multi-disk archives; entry count and compressed, per-entry, XML, and expanded sizes are bounded.
@@ -53,7 +54,7 @@ console.log(walkObjects(document).map((object) => [object.kind, object.name]));
 
 ## SVG
 
-The renderer uses LBX points (`1 pt = 1/72 inch`) in the SVG view box. It supports text, safe XML escaping, embedded images as data URLs, CODE39 including the declared wide-to-narrow ratio, dates, table borders/cell contents, and basic object rotation.
+The renderer uses LBX points (`1 pt = 1/72 inch`) in the SVG view box. It supports styled text runs, safe XML escaping, embedded images as data URLs, CODE39 including the declared wide-to-narrow ratio, Brother QR Code Model 2 layouts with Brother-compatible mask scoring, dates, table borders/cell contents, straight-line drawing objects, clipping, and object rotation. Brother's `\D\A` QR payload escape is converted to CRLF before encoding.
 
 For landscape templates, tape width and label length are mapped to the correct SVG axes. When `autoLength=true`, the very large P-touch placeholder length is replaced with the actual recursive object extent plus the trailing margin. The MVP uses SVG font fallbacks; pixel-identical Brother/Windows font metrics are not guaranteed.
 
@@ -156,7 +157,7 @@ WebUSB generally requires a Chromium-based browser, a secure context, and a user
 
 ## MVP limitations
 
-The MVP does not yet fully reproduce free-drawing objects, complex rich-text layout, clipping, all barcode protocols beyond the current CODE39 implementation, Brother font metrics, or physical USB/TCP transport. Unsupported XML objects are reported instead of being silently discarded.
+The MVP does not yet fully reproduce arbitrary free-drawing objects, every rich-text wrapping/shrink case, barcode protocols other than CODE39 and QR Code Model 2, Brother's exact Windows/GDI font rasterization, or physical USB/TCP transport. Unsupported XML objects are reported instead of being silently discarded.
 
 ## Tests and fixture provenance
 

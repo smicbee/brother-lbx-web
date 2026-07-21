@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { zipSync } from 'fflate';
 import { encode as encodeBmp } from 'bmp-js';
 import { parseLBX, setObject, walkObjects } from '../src/parser.js';
-import { escapeXml, renderToSvg } from '../src/svg.js';
+import { escapeXml, renderToSvg, selectBrotherQrMask } from '../src/svg.js';
 import { renderSvgToPng, pngToQlRasterJob, pngToRawImageData } from '../src/node.js';
 
 const fixture = resolve('test/fixtures/template.lbx');
@@ -46,6 +46,15 @@ describe('LBX parser and bindings', () => {
     expect(document.warnings.some((warning) => warning.tag === 'draw:star' && warning.path.includes('table:cell'))).toBe(true);
   });
 
+  it('preserves actual rich-text run styling instead of the editor default font', () => {
+    const document = parseLBX(tinyLbx('<text:text><pt:objectStyle x="1pt" y="1pt" width="80pt" height="20pt"/><text:ptFontInfo><text:logFont name="Arial" weight="400"/><text:fontExt size="14pt" textColor="#000000"/></text:ptFontInfo><text:textControl control="FIXEDFRAME" shrink="true"/><text:textAlign horizontalAlignment="LEFT" verticalAlignment="CENTER"/><text:textStyle lineSpace="0"/><pt:data>bold</pt:data><text:stringItem charLen="4"><text:ptFontInfo><text:logFont name="Arial" weight="700"/><text:fontExt size="8pt" textColor="#000000"/></text:ptFontInfo></text:stringItem></text:text>'));
+    const text = document.objects[0];
+    expect(text?.kind).toBe('text');
+    if (text?.kind !== 'text') return;
+    expect(text.runs).toEqual([expect.objectContaining({ value: 'bold', fontSize: 8, fontWeight: 700 })]);
+    expect(renderToSvg(document)).toContain('font-size="8" font-weight="700"');
+  });
+
   it('rejects unsafe ZIP paths before extracting resources', () => {
     const label = new TextEncoder().encode('<?xml version="1.0"?><pt:document xmlns:pt="urn:pt"><pt:body><pt:objects/></pt:body></pt:document>');
     const archive = zipSync({ 'label.xml': label, '../Object0.bmp': new Uint8Array([0x42, 0x4d]) });
@@ -84,6 +93,31 @@ describe('SVG safety and rendering', () => {
     expect(document.warnings.some((warning) => warning.tag === 'draw:group')).toBe(true);
     expect(svg).toContain('unsupported LBX XML object draw:group');
     expect(svg).toContain('>nested<');
+  });
+
+  it('renders Brother QR codes and polyline objects without warnings', () => {
+    const document = parseLBX(tinyLbx('<barcode:barcode xmlns:barcode="http://schemas.brother.info/ptouch/2007/lbx/barcode"><pt:objectStyle x="1pt" y="1pt" width="20pt" height="20pt"/><barcode:barcodeStyle protocol="QRCODE" margin="true"/><barcode:qrcodeStyle model="2" eccLevel="15%" cellSize="0.8pt" version="auto"/><pt:data>VQ1702A4.13</pt:data></barcode:barcode><draw:poly><pt:objectStyle x="1pt" y="25pt" width="40pt" height="1pt"><pt:pen widthX="0.4pt" widthY="0.4pt" color="#000000"/></pt:objectStyle><draw:polyStyle shape="LINE"><draw:polyLinePoints points="1pt,25pt 41pt,25pt"/></draw:polyStyle></draw:poly>'));
+    expect(document.warnings).toEqual([]);
+    const svg = renderToSvg(document);
+    expect(svg).toContain('<path d="M');
+    expect(svg).toContain('<polyline points="1,25 41,25"');
+    expect(svg).not.toContain('VQ1702A4.13</text>');
+  });
+
+  it('uses Brother-compatible QR mask scoring', () => {
+    expect(selectBrotherQrMask('QRCODE', 'M')).toBe(0);
+    expect(selectBrotherQrMask('QRcode', 'M')).toBe(4);
+    expect(selectBrotherQrMask('QR_code', 'M')).toBe(3);
+    expect(selectBrotherQrMask('VQ1702A4.13', 'M')).toBe(3);
+    expect(selectBrotherQrMask('CLOSE_TASK', 'M')).toBe(7);
+  });
+
+  it('keeps empty and oversized fixed-version QR placeholders renderable', () => {
+    const empty = parseLBX(tinyLbx('<barcode:barcode xmlns:barcode="http://schemas.brother.info/ptouch/2007/lbx/barcode"><pt:objectStyle x="1pt" y="1pt" width="20pt" height="20pt"/><barcode:barcodeStyle protocol="QRCODE"/><barcode:qrcodeStyle model="2" eccLevel="15%" version="1"/><pt:data/></barcode:barcode>'));
+    expect(renderToSvg(empty)).toContain('<!-- empty QR code payload -->');
+
+    const oversized = parseLBX(tinyLbx(`<barcode:barcode xmlns:barcode="http://schemas.brother.info/ptouch/2007/lbx/barcode"><pt:objectStyle x="1pt" y="1pt" width="20pt" height="20pt"/><barcode:barcodeStyle protocol="QRCODE"/><barcode:qrcodeStyle model="2" eccLevel="15%" version="1"/><pt:data>${'A'.repeat(200)}</pt:data></barcode:barcode>`));
+    expect(renderToSvg(oversized)).toContain('<!-- QR code payload does not fit configured version -->');
   });
 
   it('renders table labels and CODE39 as bars for the real fixture', async () => {

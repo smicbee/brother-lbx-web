@@ -1,6 +1,8 @@
+import QRCode from 'qrcode';
 import type {
   LbxBarcodeObject, LbxDateTimeObject, LbxDocument, LbxImageObject, LbxObject,
-  LbxPointRect, LbxResource, LbxTableObject, LbxTextObject, SvgRenderOptions,
+  LbxPointRect, LbxPolyObject, LbxResource, LbxTableObject, LbxTextObject,
+  LbxTextRun, SvgRenderOptions,
 } from './types.js';
 
 const CODE39: Record<string, string> = {
@@ -58,27 +60,75 @@ function imageHref(resource: LbxResource, options: SvgRenderOptions): string {
   return `data:${resource.mime};base64,${base64(resource.bytes)}`;
 }
 
-function textY(object: LbxTextObject): number {
-  if (object.verticalAlign === 'TOP') return object.bounds.y + object.fontSize;
-  if (object.verticalAlign === 'BOTTOM') return object.bounds.y + object.bounds.height;
-  return object.bounds.y + object.bounds.height / 2 + object.fontSize * 0.35;
-}
-
 function textAnchor(object: LbxTextObject): 'start' | 'middle' | 'end' {
   if (object.horizontalAlign === 'RIGHT') return 'end';
   if (object.horizontalAlign === 'CENTER') return 'middle';
   return 'start';
 }
 
+function textDecoration(run: LbxTextRun): string | undefined {
+  const values = [];
+  if (run.underline) values.push('underline');
+  if (run.strikeout) values.push('line-through');
+  return values.length ? values.join(' ') : undefined;
+}
+
+function textRunAttributes(run: LbxTextRun, options: SvgRenderOptions): string {
+  const family = escapeXml(run.fontFamily || options.fontFamily || 'Arial');
+  const decoration = textDecoration(run);
+  return ` font-family="${family}" font-size="${fmt(run.fontSize || options.defaultFontSize || 10)}" font-weight="${fmt(run.fontWeight)}"${run.italic ? ' font-style="italic"' : ''}${decoration ? ` text-decoration="${decoration}"` : ''} fill="${escapeXml(run.color)}"`;
+}
+
+function splitTextRuns(object: LbxTextObject): LbxTextRun[][] {
+  const lines: LbxTextRun[][] = [[]];
+  for (const run of object.runs) {
+    const parts = run.value.split(/\r\n|\r|\n/);
+    parts.forEach((part, index) => {
+      if (part) lines[lines.length - 1]?.push({ ...run, value: part });
+      if (index < parts.length - 1) lines.push([]);
+    });
+  }
+  return lines.length ? lines : [[{ ...object, value: object.value }]];
+}
+
+function lineFontSize(line: LbxTextRun[], object: LbxTextObject, options: SvgRenderOptions): number {
+  return Math.max(...line.map((run) => run.fontSize), object.fontSize || options.defaultFontSize || 10);
+}
+
+function textFirstBaseline(object: LbxTextObject, lineSizes: number[], lineHeights: number[]): number {
+  const totalHeight = lineSizes.length === 1
+    ? lineSizes[0] ?? object.fontSize
+    : (lineHeights.slice(0, -1).reduce((sum, height) => sum + height, 0) + (lineSizes.at(-1) ?? object.fontSize));
+  const firstSize = lineSizes[0] ?? object.fontSize;
+  if (object.verticalAlign === 'TOP') return object.bounds.y + firstSize * 0.8;
+  if (object.verticalAlign === 'BOTTOM') return object.bounds.y + object.bounds.height - totalHeight + firstSize * 0.8;
+  return object.bounds.y + (object.bounds.height - totalHeight) / 2 + firstSize * 0.85;
+}
+
+function clipId(object: LbxTextObject): string {
+  let hash = 2166136261;
+  for (const character of object.path) {
+    hash ^= character.codePointAt(0) ?? 0;
+    hash = Math.imul(hash, 16777619);
+  }
+  return `lbx-clip-${(hash >>> 0).toString(16)}`;
+}
+
 function renderText(object: LbxTextObject, options: SvgRenderOptions): string {
-  const lines = object.value.split(/\r?\n/);
+  const lines = splitTextRuns(object);
   const anchor = textAnchor(object);
   const x = anchor === 'end' ? object.bounds.x + object.bounds.width : anchor === 'middle' ? object.bounds.x + object.bounds.width / 2 : object.bounds.x;
-  const fontSize = object.fontSize || options.defaultFontSize || 10;
-  const family = escapeXml(object.fontFamily || options.fontFamily || 'Arial, sans-serif');
-  const lineHeight = fontSize * 1.2;
-  const text = lines.map((line, index) => `<tspan x="${fmt(x)}" dy="${index ? fmt(lineHeight) : '0'}">${escapeXml(line)}</tspan>`).join('');
-  return `<text x="${fmt(x)}" y="${fmt(textY(object))}" text-anchor="${anchor}" font-family="${family}" font-size="${fmt(fontSize)}" fill="${escapeXml(object.color)}"${transform(object.bounds, object.angle)}>${text}</text>`;
+  const lineSizes = lines.map((line) => lineFontSize(line, object, options));
+  const lineHeights = lineSizes.map((size) => size * (1 + object.lineSpace / 100));
+  const baseline = textFirstBaseline(object, lineSizes, lineHeights);
+  const text = lines.map((line, lineIndex) => line.map((run, runIndex) => {
+    const position = runIndex === 0 ? ` x="${fmt(x)}" dy="${lineIndex ? fmt(lineHeights[lineIndex - 1] ?? lineSizes[lineIndex - 1] ?? object.fontSize) : '0'}"` : '';
+    return `<tspan${position}${textRunAttributes(run, options)}>${escapeXml(run.value)}</tspan>`;
+  }).join('')).join('');
+  const spacing = object.charSpace ? ` letter-spacing="${fmt(object.charSpace)}"` : '';
+  const clipping = object.clipFrame ? ` clip-path="url(#${clipId(object)})"` : '';
+  const definition = object.clipFrame ? `<defs><clipPath id="${clipId(object)}"><rect ${rectAttrs(object.bounds)} /></clipPath></defs>` : '';
+  return `${definition}<text x="${fmt(x)}" y="${fmt(baseline)}" text-anchor="${anchor}"${spacing}${clipping}${transform(object.bounds, object.angle)}>${text}</text>`;
 }
 
 function renderImage(object: LbxImageObject): string {
@@ -109,7 +159,8 @@ function code39Elements(value: string, wideRatio: number): Code39Element[] {
 }
 
 function renderBarcode(object: LbxBarcodeObject): string {
-  if (object.protocol.toUpperCase() !== 'CODE39') return `<text x="${fmt(object.bounds.x)}" y="${fmt(object.bounds.y + object.bounds.height / 2)}" font-size="10">${escapeXml(object.value)}</text>`;
+  if (object.protocol.toUpperCase() === 'QRCODE') return renderQrCode(object);
+  if (object.protocol.toUpperCase() !== 'CODE39') return `<!-- unsupported barcode protocol ${escapeXml(object.protocol)} -->`;
   const elements = code39Elements(object.value, code39WideRatio(object.barRatio));
   if (!elements.length) return `<text ${rectAttrs(object.bounds)}>${escapeXml(object.value)}</text>`;
   const unit = Math.max(0.2, object.barWidth);
@@ -127,9 +178,158 @@ function renderBarcode(object: LbxBarcodeObject): string {
   return `<g${transform(object.bounds, object.angle)} fill="#000000">${paths.join('')}${label}</g>`;
 }
 
+function qrErrorCorrectionLevel(raw: string): 'L' | 'M' | 'Q' | 'H' {
+  const normalized = raw.trim().toUpperCase();
+  if (normalized === '7%' || normalized === 'L') return 'L';
+  if (normalized === '25%' || normalized === 'Q') return 'Q';
+  if (normalized === '30%' || normalized === 'H') return 'H';
+  return 'M';
+}
+
+interface QrModules {
+  size: number;
+  data: Uint8Array;
+  get(row: number, column: number): number;
+}
+
+type QrMaskPattern = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
+const QR_MASK_PATTERNS: readonly QrMaskPattern[] = [0, 1, 2, 3, 4, 5, 6, 7];
+
+function brotherQrPenalty(modules: QrModules): number {
+  const size = modules.size;
+  let penalty = 0;
+
+  for (let row = 0; row < size - 1; row += 1) {
+    for (let column = 0; column < size - 1; column += 1) {
+      const dark = modules.get(row, column)
+        + modules.get(row + 1, column)
+        + modules.get(row, column + 1)
+        + modules.get(row + 1, column + 1);
+      if (dark === 0 || dark === 4) penalty += 3;
+    }
+  }
+
+  const linePenalty = (line: number[]): number => {
+    const runs: number[] = [];
+    let previous = line[0] ?? 0;
+    let length = 1;
+    if (previous) runs.push(-1);
+    for (let index = 1; index < line.length; index += 1) {
+      if (line[index] !== previous) {
+        runs.push(length);
+        previous = line[index] ?? 0;
+        length = 1;
+      } else {
+        length += 1;
+      }
+    }
+    runs.push(length);
+
+    let result = 0;
+    for (let index = 0; index < runs.length; index += 1) {
+      const run = runs[index] ?? 0;
+      if (run >= 5) result += run - 2;
+      if ((index & 1) && index >= 3 && index < runs.length - 2 && run % 3 === 0) {
+        const unit = run / 3;
+        if (
+          runs[index - 2] === unit
+          && runs[index - 1] === unit
+          && runs[index + 1] === unit
+          && runs[index + 2] === unit
+          && (index === 3 || (runs[index - 3] ?? 0) >= 4 * unit || index + 4 >= runs.length || (runs[index + 3] ?? 0) >= 4 * unit)
+        ) result += 40;
+      }
+    }
+    return result;
+  };
+
+  for (let row = 0; row < size; row += 1) {
+    penalty += linePenalty(Array.from({ length: size }, (_, column) => modules.get(row, column)));
+  }
+  for (let column = 0; column < size; column += 1) {
+    penalty += linePenalty(Array.from({ length: size }, (_, row) => modules.get(row, column)));
+  }
+
+  let dark = 0;
+  for (const value of modules.data) dark += value;
+  const percentage = Math.floor((200 * dark + size * size) / (size * size) / 2);
+  return penalty + Math.floor(Math.abs(percentage - 50) / 5) * 10;
+}
+
+export function selectBrotherQrMask(
+  payload: string,
+  errorCorrectionLevel: 'L' | 'M' | 'Q' | 'H',
+  version?: number,
+): QrMaskPattern {
+  let selected: QrMaskPattern = 0;
+  let minimum = Number.POSITIVE_INFINITY;
+  for (const maskPattern of QR_MASK_PATTERNS) {
+    const qr = QRCode.create(payload, { errorCorrectionLevel, version, maskPattern });
+    const penalty = brotherQrPenalty(qr.modules);
+    if (penalty < minimum) {
+      minimum = penalty;
+      selected = maskPattern;
+    }
+  }
+  return selected;
+}
+
+function renderQrCode(object: LbxBarcodeObject): string {
+  if (!object.qrCode || object.qrCode.model !== 2) return `<!-- unsupported QR code model -->`;
+  const payload = object.value.replaceAll('\\D\\A', '\r\n');
+  if (!payload) return `<!-- empty QR code payload -->`;
+  const errorCorrectionLevel = qrErrorCorrectionLevel(object.qrCode.errorCorrectionLevel);
+  let qr: ReturnType<typeof QRCode.create>;
+  try {
+    const maskPattern = selectBrotherQrMask(payload, errorCorrectionLevel, object.qrCode.version);
+    qr = QRCode.create(payload, {
+      errorCorrectionLevel,
+      version: object.qrCode.version,
+      maskPattern,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('cannot contain this amount of data')) {
+      return `<!-- QR code payload does not fit configured version -->`;
+    }
+    throw error;
+  }
+  const quietModules = object.qrCode.margin ? 1 : 0;
+  const configuredCell = object.qrCode.cellSize > 0 ? object.qrCode.cellSize : 1;
+  const maximumCell = Math.min(
+    object.bounds.width / (qr.modules.size + quietModules * 2),
+    object.bounds.height / (qr.modules.size + quietModules * 2),
+  );
+  const cell = Math.min(configuredCell, maximumCell);
+  const size = (qr.modules.size + quietModules * 2) * cell;
+  const startX = object.bounds.x + (object.bounds.width - size) / 2 + quietModules * cell;
+  const startY = object.bounds.y + (object.bounds.height - size) / 2 + quietModules * cell;
+  const modules: string[] = [];
+  for (let row = 0; row < qr.modules.size; row += 1) {
+    for (let column = 0; column < qr.modules.size; column += 1) {
+      if (qr.modules.get(row, column)) modules.push(`M${fmt(startX + column * cell)} ${fmt(startY + row * cell)}h${fmt(cell)}v${fmt(cell)}h-${fmt(cell)}z`);
+    }
+  }
+  return `<path d="${modules.join('')}" fill="#000000"${transform(object.bounds, object.angle)} />`;
+}
+
 function renderDateTime(object: LbxDateTimeObject): string {
-  const text: LbxTextObject = { ...object, kind: 'text', value: object.value, fontSize: 9, color: '#000000', horizontalAlign: 'RIGHT', verticalAlign: 'CENTER' };
+  const run: LbxTextRun = {
+    value: object.value, fontSize: 9, fontWeight: 400, italic: false,
+    underline: false, strikeout: false, color: '#000000',
+  };
+  const text: LbxTextObject = {
+    ...object, kind: 'text', value: object.value, fontSize: 9, fontWeight: 400,
+    italic: false, underline: false, strikeout: false, color: '#000000',
+    horizontalAlign: 'RIGHT', verticalAlign: 'CENTER', control: 'FREE',
+    clipFrame: false, shrink: false, autoLineFeed: false, charSpace: 0,
+    lineSpace: 0, vertical: false, runs: [run],
+  };
   return renderText(text, {});
+}
+
+function renderPoly(object: LbxPolyObject): string {
+  if (!object.points.length) return '';
+  return `<polyline points="${object.points.map((point) => `${fmt(point.x)},${fmt(point.y)}`).join(' ')}" fill="none" stroke="${escapeXml(object.stroke)}" stroke-width="${fmt(object.strokeWidth)}"${transform(object.bounds, object.angle)} />`;
 }
 
 function renderTable(object: LbxTableObject, options: SvgRenderOptions, renderObject: (item: LbxObject) => string): string {
@@ -146,6 +346,7 @@ function renderOne(object: LbxObject, options: SvgRenderOptions): string {
     case 'image': return object.resource ? `<image ${rectAttrs(object.bounds)} href="${imageHref(object.resource, options)}" preserveAspectRatio="none"${transform(object.bounds, object.angle)} />` : `<!-- missing image resource ${escapeXml(object.resourceName)} -->`;
     case 'barcode': return renderBarcode(object);
     case 'datetime': return renderDateTime(object);
+    case 'poly': return renderPoly(object);
     case 'table': return renderTable(object, options, (child) => renderOne(child, options));
     case 'unknown': return `<!-- unsupported LBX XML object ${escapeXml(object.tag)} at ${escapeXml(object.path)} -->${object.children.map((child) => renderOne(child, options)).join('')}`;
   }

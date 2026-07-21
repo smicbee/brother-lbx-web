@@ -2,13 +2,13 @@ import { unzipSync } from 'fflate';
 import { DOMParser, XMLSerializer } from '@xmldom/xmldom';
 import type {
   BindingValue, LbxBarcodeObject, LbxDateTimeObject, LbxDocument, LbxImageObject,
-  LbxObject, LbxPaper, LbxPointRect, LbxResource, LbxTableCell, LbxTableObject,
-  LbxTextObject, LbxUnknownObject, LbxWarning,
+  LbxObject, LbxPaper, LbxPointRect, LbxPolyObject, LbxResource, LbxTableCell,
+  LbxTableObject, LbxTextObject, LbxTextRun, LbxUnknownObject, LbxWarning,
   LbxInput,
 } from './types.js';
 import type { Element as XmlElement, Node as XmlNode } from '@xmldom/xmldom';
 
-const OBJECT_TAGS = new Set(['text', 'barcode', 'datetime', 'image', 'table']);
+const OBJECT_TAGS = new Set(['text', 'barcode', 'datetime', 'image', 'poly', 'table']);
 const IGNORED_CONTAINER_TAGS = new Set(['objectStyle', 'pen', 'brush', 'expanded', 'textFontInfo', 'ptFontInfo', 'logFont', 'fontExt', 'textControl', 'textAlign', 'textStyle', 'stringItem', 'barcodeStyle', 'transparent', 'trimming', 'orgPos', 'effect', 'mono', 'tableStyle', 'gridPosition', 'cells', 'cell', 'data', 'dateTimeStyle', 'dateAndTime']);
 
 const ARCHIVE_LIMITS = {
@@ -171,6 +171,11 @@ function numberAttr(element: XmlElement | undefined, name: string, fallback = 0)
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function booleanAttr(element: XmlElement | undefined, name: string, fallback = false): boolean {
+  const value = element?.getAttribute(name);
+  return value === null || value === undefined || value === '' ? fallback : value.toLowerCase() === 'true' || value === '1';
+}
+
 function rectFromStyle(style: XmlElement | undefined): LbxPointRect {
   return {
     x: numberAttr(style, 'x'),
@@ -231,27 +236,79 @@ function parsePaper(root: XmlElement): LbxPaper {
   };
 }
 
-function parseText(element: XmlElement, path: string): LbxTextObject {
-  const style = objectStyle(element);
-  const fontInfo = firstChild(element, 'ptFontInfo');
+function parseTextRunStyle(fontInfo: XmlElement | undefined): Omit<LbxTextRun, 'value'> {
   const logFont = firstChild(fontInfo as XmlElement, 'logFont');
   const fontExt = firstChild(fontInfo as XmlElement, 'fontExt');
+  return {
+    fontFamily: logFont?.getAttribute('name') || undefined,
+    fontSize: numberAttr(fontExt, 'size', numberAttr(fontExt, 'orgSize', 10)),
+    fontWeight: Math.max(1, Math.round(numberAttr(logFont, 'weight', 400))),
+    italic: booleanAttr(logFont, 'italic'),
+    underline: numberAttr(fontExt, 'underline') !== 0,
+    strikeout: numberAttr(fontExt, 'strikeout') !== 0,
+    color: fontExt?.getAttribute('textColor') || '#000000',
+  };
+}
+
+function parseTextRuns(element: XmlElement, value: string, fallback: Omit<LbxTextRun, 'value'>): LbxTextRun[] {
+  const characters = Array.from(value);
+  const runs: LbxTextRun[] = [];
+  let offset = 0;
+  const append = (run: LbxTextRun) => {
+    const previous = runs.at(-1);
+    if (previous
+      && previous.fontFamily === run.fontFamily
+      && previous.fontSize === run.fontSize
+      && previous.fontWeight === run.fontWeight
+      && previous.italic === run.italic
+      && previous.underline === run.underline
+      && previous.strikeout === run.strikeout
+      && previous.color === run.color) {
+      previous.value += run.value;
+    } else runs.push(run);
+  };
+  for (const item of children(element).filter((child) => localName(child) === 'stringItem')) {
+    const length = Math.max(0, Number.parseInt(item.getAttribute('charLen') || '0', 10) || 0);
+    if (!length) continue;
+    const runValue = characters.slice(offset, offset + length).join('');
+    if (runValue) append({ value: runValue, ...parseTextRunStyle(firstChild(item, 'ptFontInfo')) });
+    offset += length;
+  }
+  if (offset < characters.length) append({ value: characters.slice(offset).join(''), ...fallback });
+  return runs.length ? runs : [{ value, ...fallback }];
+}
+
+function parseText(element: XmlElement, path: string): LbxTextObject {
+  const style = objectStyle(element);
+  const font = parseTextRunStyle(firstChild(element, 'ptFontInfo'));
   const align = firstChild(element, 'textAlign');
+  const control = firstChild(element, 'textControl');
+  const textStyle = firstChild(element, 'textStyle');
+  const value = textOf(firstChild(element, 'data'));
   return {
     ...baseObject(element, path),
     kind: 'text',
-    value: textOf(firstChild(element, 'data')),
-    fontFamily: logFont?.getAttribute('name') || undefined,
-    fontSize: numberAttr(fontExt, 'size', numberAttr(fontExt, 'orgSize', 10)),
-    color: fontExt?.getAttribute('textColor') || '#000000',
+    value,
+    ...font,
     horizontalAlign: (align?.getAttribute('horizontalAlignment') || 'LEFT') as LbxTextObject['horizontalAlign'],
     verticalAlign: (align?.getAttribute('verticalAlignment') || 'TOP') as LbxTextObject['verticalAlign'],
+    control: control?.getAttribute('control') || 'FREE',
+    clipFrame: booleanAttr(control, 'clipFrame'),
+    shrink: booleanAttr(control, 'shrink'),
+    autoLineFeed: booleanAttr(control, 'autoLF'),
+    charSpace: numberAttr(textStyle, 'charSpace'),
+    lineSpace: numberAttr(textStyle, 'lineSpace'),
+    vertical: booleanAttr(textStyle, 'vertical'),
+    runs: parseTextRuns(element, value, font),
     bounds: rectFromStyle(style),
   };
 }
 
 function parseBarcode(element: XmlElement, path: string): LbxBarcodeObject {
   const style = firstChild(element, 'barcodeStyle');
+  const qrStyle = firstChild(element, 'qrcodeStyle');
+  const versionValue = qrStyle?.getAttribute('version') || '';
+  const parsedVersion = Number.parseInt(versionValue, 10);
   return {
     ...baseObject(element, path),
     kind: 'barcode',
@@ -260,6 +317,13 @@ function parseBarcode(element: XmlElement, path: string): LbxBarcodeObject {
     humanReadable: (style?.getAttribute('humanReadable') || 'false') === 'true',
     barWidth: numberAttr(style, 'barWidth', 1),
     barRatio: style?.getAttribute('barRatio') || '1:3',
+    qrCode: (style?.getAttribute('protocol') || '').toUpperCase() === 'QRCODE' ? {
+      model: Number.parseInt(qrStyle?.getAttribute('model') || '2', 10) || 2,
+      errorCorrectionLevel: qrStyle?.getAttribute('eccLevel') || '15%',
+      cellSize: numberAttr(qrStyle, 'cellSize', 1),
+      margin: booleanAttr(style, 'margin', true),
+      version: Number.isInteger(parsedVersion) && parsedVersion >= 1 && parsedVersion <= 40 ? parsedVersion : undefined,
+    } : undefined,
   };
 }
 
@@ -294,6 +358,31 @@ function parseImage(element: XmlElement, path: string, resources: Record<string,
     resourceName,
     resource: findResource(resources, resourceName),
     originalName: style?.getAttribute('originalName') || undefined,
+  };
+}
+
+function parsePoints(raw: string | null | undefined): Array<{ x: number; y: number }> {
+  return (raw || '').trim().split(/\s+/).map((pair) => {
+    const [x, y] = pair.split(',');
+    return {
+      x: Number.parseFloat((x || '0').replace(/pt$/i, '')) || 0,
+      y: Number.parseFloat((y || '0').replace(/pt$/i, '')) || 0,
+    };
+  }).filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y));
+}
+
+function parsePoly(element: XmlElement, path: string): LbxPolyObject {
+  const style = objectStyle(element);
+  const pen = firstChild(style as XmlElement, 'pen');
+  const polyStyle = firstChild(element, 'polyStyle');
+  const points = firstChild(polyStyle as XmlElement, 'polyLinePoints');
+  return {
+    ...baseObject(element, path),
+    kind: 'poly',
+    shape: polyStyle?.getAttribute('shape') || 'LINE',
+    points: parsePoints(points?.getAttribute('points')),
+    stroke: pen?.getAttribute('color') || '#000000',
+    strokeWidth: Math.max(numberAttr(pen, 'widthX', 0.5), numberAttr(pen, 'widthY', 0.5)),
   };
 }
 
@@ -349,6 +438,7 @@ function parseObject(element: XmlElement, path: string, resources: Record<string
     case 'barcode': return parseBarcode(element, path);
     case 'datetime': return parseDateTime(element, path);
     case 'image': return parseImage(element, path, resources);
+    case 'poly': return parsePoly(element, path);
     case 'table': return parseTable(element, path, resources, warnings);
     default: return unknownObject(element, path, resources, warnings);
   }
@@ -441,7 +531,20 @@ export function setObject(document: LbxDocument, name: string, value: BindingVal
   const rendered = bindingText(value);
   for (const object of walkObjects(document)) {
     if (object.name !== name) continue;
-    if (object.kind === 'text' || object.kind === 'barcode') { object.value = rendered; changed = true; }
+    if (object.kind === 'text') {
+      const style = object.runs[0] ?? {
+        fontFamily: object.fontFamily,
+        fontSize: object.fontSize,
+        fontWeight: object.fontWeight,
+        italic: object.italic,
+        underline: object.underline,
+        strikeout: object.strikeout,
+        color: object.color,
+      };
+      object.value = rendered;
+      object.runs = [{ ...style, value: rendered }];
+      changed = true;
+    } else if (object.kind === 'barcode') { object.value = rendered; changed = true; }
     else if (object.kind === 'datetime') { object.value = rendered; object.date = rendered; changed = true; }
   }
   return changed;
