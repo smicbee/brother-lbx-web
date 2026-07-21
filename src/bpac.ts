@@ -71,7 +71,21 @@ function dataText(object: LbxObject): string | undefined {
 
 function setDataText(object: LbxObject, value: BindingValue): boolean {
   const text = value instanceof Date ? value.toISOString().slice(0, 10) : String(value);
-  if (object.kind === 'text' || object.kind === 'barcode') {
+  if (object.kind === 'text') {
+    const style = object.runs[0] ?? {
+      fontFamily: object.fontFamily,
+      fontSize: object.fontSize,
+      fontWeight: object.fontWeight,
+      italic: object.italic,
+      underline: object.underline,
+      strikeout: object.strikeout,
+      color: object.color,
+    };
+    object.value = text;
+    object.runs = [{ ...style, value: text }];
+    return true;
+  }
+  if (object.kind === 'barcode') {
     object.value = text;
     return true;
   }
