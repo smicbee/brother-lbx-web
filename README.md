@@ -201,6 +201,22 @@ const printer = await connectBrotherQlWebUsb(); // user gesture + HTTPS/localhos
 
 WebUSB generally requires a Chromium-based browser, a secure context, and a user gesture. Firefox, Safari, and unsupported platforms require a local bridge or Node.js transport. Device permission, operating-system/driver support, and loaded media must be checked separately.
 
+## Hosted print demo
+
+The browser-only demonstration is available at:
+
+```text
+https://bpac.michaelbeetz.de/
+```
+
+It loads uploaded or bundled `.lbx` files entirely in the browser, discovers named text/date/barcode objects, updates the SVG preview as values change, and can send the resulting RGBA label image to a connected Brother QL through WebUSB. The page includes product, QR, and auto-length text examples. Build its static deployment bundle with:
+
+```bash
+npm run demo:build
+```
+
+The output is written to ignored `demo-dist/`; source files live in `demo/`. Chrome or Edge, HTTPS, a user gesture, and compatible Brother QL hardware are required for physical printing. Browser rendering and offline raster generation are tested independently; a successful physical print still requires a real printer/media acceptance test.
+
 ## MVP limitations
 
 The MVP does not yet fully reproduce arbitrary free-drawing objects, every rich-text wrapping/shrink case, barcode protocols other than CODE39 and QR Code Model 2, Brother's exact Windows/GDI font rasterization, or physical USB/TCP transport. Unsupported XML objects are reported instead of being silently discarded.

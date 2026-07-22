@@ -41,7 +41,8 @@
     "build": "tsc -p tsconfig.json",
     "prepack": "npm run build",
     "test": "vitest run",
-    "cli": "node dist/cli.js"
+    "cli": "node dist/cli.js",
+    "demo:build": "node scripts/build-demo.mjs"
   },
   "dependencies": {
     "@resvg/resvg-js": "^2.6.2",
@@ -51,7 +52,7 @@
     "bmp-js": "^0.1.0",
     "fflate": "^0.8.3",
     "qrcode": "^1.5.4",
-    "sharp": "^0.33.5"
+    "sharp": "^0.35.3"
   },
   "devDependencies": {
     "@types/bmp-js": "^0.1.2",
