@@ -21,6 +21,33 @@ function escapeXml(value: string): string {
   return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 }
 
+const MONOCHROME_EMOJI = new Map<string, string>([
+  ['☕', '☕︎'], ['🔥', '♨'], ['❤', '♥'], ['✅', '✓'], ['☑', '☑︎'], ['✔', '✓'], ['❌', '✕'], ['❎', '✕'],
+  ['⭐', '★'], ['🌟', '★'], ['💫', '✦'], ['✨', '✦'], ['💡', '✦'], ['⚠', '⚠︎'], ['ℹ', 'ⓘ'], ['❓', '?'], ['❗', '!'],
+  ['😀', '☺'], ['😃', '☺'], ['😄', '☺'], ['😁', '☺'], ['😊', '☺'], ['🙂', '☺'], ['😉', '☺'], ['😍', '♥'],
+  ['😢', '☹'], ['😭', '☹'], ['☹', '☹︎'], ['😞', '☹'], ['😡', '☹'], ['😠', '☹'],
+  ['👍', '✓'], ['👎', '✕'], ['👌', '○'], ['👏', '✦'], ['🙏', '◇'],
+  ['🎉', '✦'], ['🎊', '✦'], ['🎁', '□'], ['📦', '□'], ['📍', '●'], ['🚀', '↑'],
+  ['🔴', '●'], ['🟠', '●'], ['🟡', '●'], ['🟢', '●'], ['🔵', '●'], ['🟣', '●'], ['🟤', '●'], ['⚫', '●'], ['⚪', '○'],
+  ['📞', '☎'], ['☎', '☎︎'], ['✉', '✉︎'], ['📧', '✉︎'], ['🔒', '▣'], ['🔓', '□'], ['⚙', '⚙︎'], ['🛒', '⌑'],
+  ['➡', '→'], ['⬅', '←'], ['⬆', '↑'], ['⬇', '↓'], ['↗', '↗︎'], ['↘', '↘︎'], ['↙', '↙︎'], ['↖', '↖︎'],
+]);
+
+const EMOJI_SEQUENCE = /(?:\p{Regional_Indicator}{2}|[#*0-9]\uFE0F?\u20E3|\p{Extended_Pictographic}(?:[\uFE0E\uFE0F])?(?:\p{Emoji_Modifier})?(?:\u200D\p{Extended_Pictographic}(?:[\uFE0E\uFE0F])?(?:\p{Emoji_Modifier})?)*)/gu;
+
+function monochromeEmojiText(value: string): string {
+  return value.replace(EMOJI_SEQUENCE, (sequence) => {
+    const normalized = sequence.replace(/[\uFE0E\uFE0F]/gu, '').replace(/\p{Emoji_Modifier}/gu, '');
+    const mapped = MONOCHROME_EMOJI.get(normalized);
+    if (mapped) return mapped;
+    if (/^[#*0-9]\u20E3$/u.test(normalized)) return `[${normalized[0]}]`;
+    if (/^\p{Regional_Indicator}{2}$/u.test(normalized)) return '⚑';
+    const codePoints = [...normalized];
+    if (codePoints.length === 1 && (codePoints[0]?.codePointAt(0) ?? 0) <= 0x2bff) return `${normalized}︎`;
+    return '◇';
+  });
+}
+
 function fmt(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(3).replace(/0+$/, '').replace(/\.$/, '');
 }
@@ -82,7 +109,7 @@ function textRunAttributes(run: LbxTextRun, options: SvgRenderOptions): string {
 function splitTextRuns(object: LbxTextObject): LbxTextRun[][] {
   const lines: LbxTextRun[][] = [[]];
   for (const run of object.runs) {
-    const parts = run.value.split(/\r\n|\r|\n/);
+    const parts = monochromeEmojiText(run.value).split(/\r\n|\r|\n/);
     parts.forEach((part, index) => {
       if (part) lines[lines.length - 1]?.push({ ...run, value: part });
       if (index < parts.length - 1) lines.push([]);
@@ -92,7 +119,9 @@ function splitTextRuns(object: LbxTextObject): LbxTextRun[][] {
 }
 
 function estimatedGlyphWidth(character: string, fontSize: number): number {
+  if (/^[\u200D\uFE0E\uFE0F]$/u.test(character) || /^\p{Mark}$/u.test(character)) return 0;
   if (/\s/u.test(character)) return fontSize * 0.33;
+  if (/[\u2190-\u27BF]/u.test(character)) return fontSize * 0.9;
   if (/[il1|.,'`:;]/u.test(character)) return fontSize * 0.28;
   if (character === 'I') return fontSize * 0.35;
   if (/[MW@%#&]/u.test(character)) return fontSize * 0.85;

@@ -185,6 +185,17 @@ describe('public internet LBX fixtures', () => {
     expect(longSvg).toContain(`height="${document.paper.width}pt"`);
   });
 
+  it('renders emoji as deterministic monochrome text symbols', async () => {
+    const document = parseLBX(new Uint8Array(await readFile(internetTextFixture)));
+    expect(setObject(document, 'Text1', 'COFFEE ☕ 🔥 ❤️ ✅ UNKNOWN 🦄')).toBe(true);
+
+    const svg = renderToSvg(document);
+    expect(svg).toContain('>COFFEE ☕︎ ♨ ♥ ✓ UNKNOWN ◇<');
+    expect(svg).not.toContain('🔥');
+    expect(svg).not.toContain('✅');
+    expect(svg).not.toContain('🦄');
+  });
+
   it('renders an embedded BMP and creates a valid Brother QL raster stream', async () => {
     const document = parseLBX(new Uint8Array(await readFile(internetImageFixture)));
     expect(document.resources['Object0.bmp']?.mime).toBe('image/bmp');
