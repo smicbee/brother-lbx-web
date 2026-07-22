@@ -129,6 +129,13 @@ function setFacts(documentValue?: LbxDocument): void {
   byId('fact-objects').textContent = String(walkObjects(documentValue).length);
 }
 
+function setRenderedSize(svg: string): void {
+  const { width, height } = svgViewBox(svg);
+  const widthMm = width / 72 * 25.4;
+  const heightMm = height / 72 * 25.4;
+  byId('fact-size').textContent = `${widthMm.toFixed(1)} × ${heightMm.toFixed(1)} mm`;
+}
+
 function renderParameterFields(documentValue: LbxDocument): void {
   parameterFields.replaceChildren();
   const objects = uniqueBindableObjects(documentValue);
@@ -166,14 +173,22 @@ function applyValues(values: Record<string, string>): void {
 }
 
 function selectInferredMedia(documentValue: LbxDocument): void {
-  const inferred = Number.parseInt(documentValue.paper.format ?? '', 10);
-  mediaSelect.value = supportedMedia.some((medium) => medium.id === inferred) ? String(inferred) : '259';
+  const storedId = Number.parseInt(documentValue.paper.format ?? '', 10);
+  const tapeWidthMm = documentValue.paper.width / 72 * 25.4;
+  const storedMedium = supportedMedia.find((medium) => medium.id === storedId);
+  if (storedMedium && Math.abs(storedMedium.widthMm - tapeWidthMm) <= 0.5) {
+    mediaSelect.value = String(storedMedium.id);
+    return;
+  }
+  const widthMatch = supportedMedia.find((medium) => medium.type === 'continuous' && Math.abs(medium.widthMm - tapeWidthMm) <= 0.5);
+  mediaSelect.value = String(widthMatch?.id ?? 259);
 }
 
 function renderPreview(): void {
   if (!currentDocument) return;
   try {
     currentSvg = renderToSvg(currentDocument, { includeMetadata: false });
+    setRenderedSize(currentSvg);
     const blob = new Blob([currentSvg], { type: 'image/svg+xml' });
     const nextUrl = URL.createObjectURL(blob);
     preview.onload = () => {
@@ -215,6 +230,7 @@ async function loadBytes(bytes: Uint8Array, name: string, values?: Record<string
   if (bytes.byteLength > maxUploadBytes) throw new Error('The LBX file is larger than 10 MB.');
   const parsed = parseLBX(bytes);
   currentDocument = parsed;
+  currentSvg = '';
   currentFileName = name;
   selectInferredMedia(parsed);
   renderParameterFields(parsed);

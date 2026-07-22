@@ -168,6 +168,23 @@ describe('public internet LBX fixtures', () => {
     expect(nonWhite).toBeGreaterThan(20);
   });
 
+  it('recomputes continuous-tape autoLength after bound text changes', async () => {
+    const document = parseLBX(new Uint8Array(await readFile(internetTextFixture)));
+    const viewBoxWidth = () => Number(renderToSvg(document).match(/viewBox="0 0 ([\d.]+)/)?.[1]);
+
+    const originalWidth = viewBoxWidth();
+    expect(setObject(document, 'Text1', 'A')).toBe(true);
+    const shortWidth = viewBoxWidth();
+    expect(setObject(document, 'Text1', 'THIS IS A MUCH LONGER CONTINUOUS TAPE LABEL')).toBe(true);
+    const longSvg = renderToSvg(document);
+    const longWidth = Number(longSvg.match(/viewBox="0 0 ([\d.]+)/)?.[1]);
+
+    expect(shortWidth).toBeLessThan(originalWidth);
+    expect(longWidth).toBeGreaterThan(originalWidth * 4);
+    expect(longSvg).toContain('>THIS IS A MUCH LONGER CONTINUOUS TAPE LABEL<');
+    expect(longSvg).toContain(`height="${document.paper.width}pt"`);
+  });
+
   it('renders an embedded BMP and creates a valid Brother QL raster stream', async () => {
     const document = parseLBX(new Uint8Array(await readFile(internetImageFixture)));
     expect(document.resources['Object0.bmp']?.mime).toBe('image/bmp');

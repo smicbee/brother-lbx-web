@@ -91,6 +91,44 @@ function splitTextRuns(object: LbxTextObject): LbxTextRun[][] {
   return lines.length ? lines : [[{ ...object, value: object.value }]];
 }
 
+function estimatedGlyphWidth(character: string, fontSize: number): number {
+  if (/\s/u.test(character)) return fontSize * 0.33;
+  if (/[il1|.,'`:;]/u.test(character)) return fontSize * 0.28;
+  if (character === 'I') return fontSize * 0.35;
+  if (/[MW@%#&]/u.test(character)) return fontSize * 0.85;
+  if (/[A-Z]/u.test(character)) return fontSize * 0.664;
+  if (/[0-9]/u.test(character)) return fontSize * 0.56;
+  if (/[a-z]/u.test(character)) return fontSize * 0.528;
+  return fontSize * 0.6;
+}
+
+/**
+ * AUTOLEN text frames are resized by P-touch Editor after their text changes,
+ * but an edited in-memory LBX still carries the old frame rectangle. Estimate
+ * the rendered line width so continuous-tape output can grow and shrink before
+ * a browser or rasterizer has laid out the SVG text. The one-decimal rounding
+ * matches the precision used by Brother's stored point geometry.
+ */
+function autoLengthTextWidth(object: LbxTextObject): number | undefined {
+  if (object.control.toUpperCase() !== 'AUTOLEN' || object.vertical || object.angle) return undefined;
+  const widths = splitTextRuns(object).map((line) => {
+    let width = 0;
+    let characters = 0;
+    for (const run of line) {
+      const fontSize = run.fontSize || object.fontSize || 10;
+      const glyphs = [...run.value];
+      characters += glyphs.length;
+      let runWidth = glyphs.reduce((sum, character) => sum + estimatedGlyphWidth(character, fontSize), 0);
+      if (run.fontWeight >= 600) runWidth *= 1.03;
+      if (run.italic) runWidth *= 1.02;
+      width += runWidth;
+    }
+    width += Math.max(0, characters - 1) * object.charSpace;
+    return width;
+  });
+  return Math.round(Math.max(0, ...widths) * 10) / 10;
+}
+
 function lineFontSize(line: LbxTextRun[], object: LbxTextObject, options: SvgRenderOptions): number {
   return Math.max(...line.map((run) => run.fontSize), object.fontSize || options.defaultFontSize || 10);
 }
@@ -353,7 +391,8 @@ function renderOne(object: LbxObject, options: SvgRenderOptions): string {
 }
 
 function visitObjectExtents(object: LbxObject, current: { maxX: number; maxY: number }): void {
-  current.maxX = Math.max(current.maxX, object.bounds.x + object.bounds.width);
+  const contentWidth = object.kind === 'text' ? autoLengthTextWidth(object) : undefined;
+  current.maxX = Math.max(current.maxX, object.bounds.x + (contentWidth ?? object.bounds.width));
   current.maxY = Math.max(current.maxY, object.bounds.y + object.bounds.height);
   if (object.kind === 'table') {
     for (const cell of object.cells) for (const child of cell.objects) visitObjectExtents(child, current);
