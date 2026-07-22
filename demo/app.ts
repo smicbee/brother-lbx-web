@@ -21,20 +21,20 @@ interface ConnectedPrinter {
 
 const examples: DemoExample[] = [
   {
-    title: 'Produktetikett',
-    description: 'Tabelle, Datum, Preis und CODE39',
+    title: 'Product label',
+    description: 'Table, date, price, and CODE39',
     file: './examples/product-label.lbx',
-    values: { product: 'Ethiopia Guji', price: '€ 12,90', weight: '250 g', barcode: 'GUJI0426', date: '2026-07-22' },
+    values: { product: 'Ethiopia Guji', price: '€12.90', weight: '250 g', barcode: 'GUJI0426', date: '2026-07-22' },
   },
   {
-    title: 'QR-Testlabel',
-    description: 'QR Model 2 mit frei änderbarem Ziel',
+    title: 'QR test label',
+    description: 'QR Model 2 with an editable destination',
     file: './examples/qr-test-label.lbx',
     values: { title: 'LBX Print Bench', description: 'WebUSB Demo / QL-820NWB', qr: 'https://bpac.michaelbeetz.de/', payloadCaption: 'bpac.michaelbeetz.de' },
   },
   {
-    title: 'Endlosband 12 mm',
-    description: 'Auto-Länge und einfacher Text',
+    title: '12 mm continuous tape',
+    description: 'Auto length and simple text',
     file: './examples/text-strip-12mm.lbx',
     values: { Text1: 'LAB · SAMPLE 2026-042' },
   },
@@ -104,8 +104,8 @@ function uniqueBindableObjects(documentValue: LbxDocument): Array<LbxObject & { 
 }
 
 function displayKind(object: LbxObject): string {
-  if (object.kind === 'barcode') return `Barcode · ${object.protocol || 'unbekannt'}`;
-  if (object.kind === 'datetime') return 'Datum';
+  if (object.kind === 'barcode') return `Barcode · ${object.protocol || 'unknown'}`;
+  if (object.kind === 'datetime') return 'Date';
   return 'Text';
 }
 
@@ -117,7 +117,7 @@ function fieldLabel(name: string): string {
 }
 
 function setFacts(documentValue?: LbxDocument): void {
-  byId('fact-file').textContent = currentFileName || 'Noch keine';
+  byId('fact-file').textContent = currentFileName || 'None yet';
   if (!documentValue) {
     byId('fact-size').textContent = '–';
     byId('fact-objects').textContent = '–';
@@ -133,7 +133,7 @@ function renderParameterFields(documentValue: LbxDocument): void {
   parameterFields.replaceChildren();
   const objects = uniqueBindableObjects(documentValue);
   parameterEmpty.hidden = objects.length > 0;
-  byId('field-count').textContent = `${objects.length} ${objects.length === 1 ? 'Feld' : 'Felder'}`;
+  byId('field-count').textContent = `${objects.length} ${objects.length === 1 ? 'field' : 'fields'}`;
   initialValues = new Map(objects.map((object) => [object.name, object.value]));
 
   for (const object of objects) {
@@ -192,7 +192,7 @@ function renderPreview(): void {
     updatePrintButton();
     const warningCount = currentDocument.warnings.length;
     setDiagnostics(
-      warningCount ? `${warningCount} Hinweis${warningCount === 1 ? '' : 'e'}: ${currentDocument.warnings[0]?.message ?? 'unbekanntes Objekt'}` : 'LBX vollständig geparst · Vorschau lokal erzeugt',
+      warningCount ? `${warningCount} warning${warningCount === 1 ? '' : 's'}: ${currentDocument.warnings[0]?.message ?? 'unknown object'}` : 'LBX parsed successfully · Preview rendered locally',
       warningCount ? 'warn' : 'ok',
     );
   } catch (error) {
@@ -212,7 +212,7 @@ function updatePrintButton(): void {
 }
 
 async function loadBytes(bytes: Uint8Array, name: string, values?: Record<string, string>): Promise<void> {
-  if (bytes.byteLength > maxUploadBytes) throw new Error('Die LBX-Datei ist größer als 10 MB.');
+  if (bytes.byteLength > maxUploadBytes) throw new Error('The LBX file is larger than 10 MB.');
   const parsed = parseLBX(bytes);
   currentDocument = parsed;
   currentFileName = name;
@@ -224,16 +224,16 @@ async function loadBytes(bytes: Uint8Array, name: string, values?: Record<string
 }
 
 async function loadFile(file: File): Promise<void> {
-  if (!file.name.toLowerCase().endsWith('.lbx')) throw new Error('Bitte eine Datei mit der Endung .lbx auswählen.');
+  if (!file.name.toLowerCase().endsWith('.lbx')) throw new Error('Please choose a file with the .lbx extension.');
   await loadBytes(new Uint8Array(await file.arrayBuffer()), file.name);
 }
 
 async function loadExample(example: DemoExample): Promise<void> {
-  setDiagnostics(`${example.title} wird geladen …`);
+  setDiagnostics(`Loading ${example.title} …`);
   const response = await fetch(example.file, { cache: 'no-cache' });
-  if (!response.ok) throw new Error(`Beispiel konnte nicht geladen werden (${response.status}).`);
+  if (!response.ok) throw new Error(`The example could not be loaded (${response.status}).`);
   await loadBytes(new Uint8Array(await response.arrayBuffer()), example.file.split('/').at(-1) ?? 'example.lbx', example.values);
-  showToast(`${example.title} geladen`, 'ok');
+  showToast(`${example.title} loaded`, 'ok');
 }
 
 function renderExamples(): void {
@@ -272,14 +272,14 @@ function svgViewBox(svg: string): { width: number; height: number } {
   const match = svg.match(/\bviewBox=["']\s*[-+\d.eE]+\s+[-+\d.eE]+\s+([-+\d.eE]+)\s+([-+\d.eE]+)\s*["']/i);
   const width = Number.parseFloat(match?.[1] ?? '');
   const height = Number.parseFloat(match?.[2] ?? '');
-  if (!(width > 0) || !(height > 0)) throw new Error('Die SVG-Vorschau enthält keine gültige Größe.');
+  if (!(width > 0) || !(height > 0)) throw new Error('The SVG preview does not contain valid dimensions.');
   return { width, height };
 }
 
 async function svgToRawImage(svg: string, targetWidth: number): Promise<RawImageData> {
   const dimensions = svgViewBox(svg);
   const targetHeight = Math.max(1, Math.round(targetWidth * dimensions.height / dimensions.width));
-  if (targetWidth * targetHeight > 25_000_000) throw new Error('Das Druckbild überschreitet das 25-Megapixel-Limit.');
+  if (targetWidth * targetHeight > 25_000_000) throw new Error('The print image exceeds the 25-megapixel limit.');
   const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
   try {
     const image = new Image();
@@ -290,7 +290,7 @@ async function svgToRawImage(svg: string, targetWidth: number): Promise<RawImage
     canvas.width = targetWidth;
     canvas.height = targetHeight;
     const context = canvas.getContext('2d', { willReadFrequently: true });
-    if (!context) throw new Error('Canvas ist in diesem Browser nicht verfügbar.');
+    if (!context) throw new Error('Canvas is not available in this browser.');
     context.fillStyle = '#ffffff';
     context.fillRect(0, 0, canvas.width, canvas.height);
     context.drawImage(image, 0, 0, canvas.width, canvas.height);
@@ -302,42 +302,42 @@ async function svgToRawImage(svg: string, targetWidth: number): Promise<RawImage
 }
 
 async function connectPrinter(): Promise<void> {
-  if (!('usb' in navigator)) throw new Error('WebUSB fehlt. Bitte Chrome oder Edge verwenden.');
+  if (!('usb' in navigator)) throw new Error('WebUSB is unavailable. Please use Chrome or Edge.');
   connectButton.disabled = true;
-  connectButton.textContent = 'USB-Gerät auswählen …';
+  connectButton.textContent = 'Choose a USB device …';
   try {
     if (printer?.connected) await printer.close();
     printer = await connectBrotherQlWebUsb() as ConnectedPrinter;
     printerState.textContent = printer.model;
     printerState.classList.add('is-connected');
-    connectButton.textContent = 'Anderen Drucker verbinden';
-    showToast(`${printer.model} verbunden`, 'ok');
+    connectButton.textContent = 'Connect another printer';
+    showToast(`${printer.model} connected`, 'ok');
     updatePrintButton();
     printer.getStatus().then((status) => {
-      const detail = status.media?.name ? `${printer?.model} · ${status.media.name}` : printer?.model ?? 'Verbunden';
+      const detail = status.media?.name ? `${printer?.model} · ${status.media.name}` : printer?.model ?? 'Connected';
       printerState.textContent = detail;
     }).catch(() => { /* Printing remains available when status polling is unsupported. */ });
   } finally {
     connectButton.disabled = false;
-    if (!printer?.connected) connectButton.textContent = 'Brother QL verbinden';
+    if (!printer?.connected) connectButton.textContent = 'Connect Brother QL';
   }
 }
 
 async function printCurrent(): Promise<void> {
-  if (!currentDocument || !currentSvg) throw new Error('Zuerst eine LBX-Vorlage laden.');
-  if (!printer?.connected) throw new Error('Zuerst einen Brother QL verbinden.');
+  if (!currentDocument || !currentSvg) throw new Error('Load an LBX template first.');
+  if (!printer?.connected) throw new Error('Connect a Brother QL first.');
   const media = findMedia(Number(mediaSelect.value));
-  if (!media || media.tapeSystem !== 'dk' || !media.printableDots) throw new Error('Das gewählte Medium wird nicht unterstützt.');
+  if (!media || media.tapeSystem !== 'dk' || !media.printableDots) throw new Error('The selected media is not supported.');
   const copies = Number.parseInt(copiesInput.value, 10);
-  if (!Number.isInteger(copies) || copies < 1 || copies > 99) throw new Error('Kopien müssen zwischen 1 und 99 liegen.');
+  if (!Number.isInteger(copies) || copies < 1 || copies > 99) throw new Error('Copies must be between 1 and 99.');
   printButton.disabled = true;
-  printButton.querySelector('span')!.textContent = 'Druckdaten werden erzeugt …';
+  printButton.querySelector('span')!.textContent = 'Preparing print data …';
   try {
     const raw = await svgToRawImage(currentSvg, media.printableDots);
     await printer.print(raw, media, { copies, autoCut: cutInput.checked, cutAtEnd: cutInput.checked, rotate: 'auto' });
-    showToast(`${copies} Druckauftrag${copies === 1 ? '' : 'e'} an ${printer.model} gesendet`, 'ok');
+    showToast(`${copies} print job${copies === 1 ? '' : 's'} sent to ${printer.model}`, 'ok');
   } finally {
-    printButton.querySelector('span')!.textContent = 'Druckauftrag senden';
+    printButton.querySelector('span')!.textContent = 'Send print job';
     updatePrintButton();
   }
 }
@@ -350,14 +350,14 @@ function handleError(error: unknown): void {
 
 fileInput.addEventListener('change', () => {
   const file = fileInput.files?.[0];
-  if (file) loadFile(file).then(() => showToast(`${file.name} geladen`, 'ok')).catch(handleError);
+  if (file) loadFile(file).then(() => showToast(`${file.name} loaded`, 'ok')).catch(handleError);
   fileInput.value = '';
 });
 for (const eventName of ['dragenter', 'dragover']) dropZone.addEventListener(eventName, (event) => { event.preventDefault(); dropZone.classList.add('is-dragging'); });
 for (const eventName of ['dragleave', 'drop']) dropZone.addEventListener(eventName, (event) => { event.preventDefault(); dropZone.classList.remove('is-dragging'); });
 dropZone.addEventListener('drop', (event) => {
   const file = event.dataTransfer?.files[0];
-  if (file) loadFile(file).then(() => showToast(`${file.name} geladen`, 'ok')).catch(handleError);
+  if (file) loadFile(file).then(() => showToast(`${file.name} loaded`, 'ok')).catch(handleError);
 });
 
 connectButton.addEventListener('click', () => connectPrinter().catch(handleError));
@@ -371,7 +371,7 @@ resetButton.addEventListener('click', () => {
   for (const [name, value] of initialValues) setObject(currentDocument, name, value);
   renderParameterFields(currentDocument);
   renderPreview();
-  showToast('Feldwerte zurückgesetzt', 'ok');
+  showToast('Field values reset', 'ok');
 });
 downloadButton.addEventListener('click', () => {
   if (!currentSvg) return;
@@ -388,9 +388,9 @@ populateMedia();
 setFacts();
 if ('usb' in navigator) {
   runtimeStatus.classList.add('is-ok');
-  runtimeLabel.textContent = 'WebUSB verfügbar';
+  runtimeLabel.textContent = 'WebUSB available';
 } else {
   runtimeStatus.classList.add('is-error');
-  runtimeLabel.textContent = 'Vorschau · kein WebUSB';
+  runtimeLabel.textContent = 'Preview · no WebUSB';
 }
 loadExample(examples[0]!).catch(handleError);

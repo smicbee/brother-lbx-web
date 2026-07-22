@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="de">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Browserbasierte Demo für Brother LBX-Vorlagen: Parameter setzen, Vorschau prüfen und per WebUSB drucken.">
+  <meta name="description" content="Browser-based Brother LBX demo: set template fields, verify the preview, and print through the system dialog or WebUSB.">
   <meta name="theme-color" content="#102b3a">
   <title>LBX Print Bench</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -13,35 +13,35 @@
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="#workspace" aria-label="LBX Print Bench Startseite">
+    <a class="brand" href="#workspace" aria-label="LBX Print Bench home">
       <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
       <span>LBX Print Bench</span>
     </a>
     <div class="runtime-status" id="runtime-status">
       <span class="status-dot" aria-hidden="true"></span>
-      <span id="runtime-label">Browser wird geprüft</span>
+      <span id="runtime-label">Checking browser</span>
     </div>
   </header>
 
   <main id="workspace">
     <section class="intro" aria-labelledby="page-title">
       <div>
-        <h1 id="page-title">Vom LBX direkt aufs Etikett.</h1>
-        <p>Vorlage laden, benannte Felder befüllen, Ergebnis kontrollieren und über den Systemdialog oder direkt per WebUSB drucken. Die Datei verlässt diesen Browser nicht.</p>
+        <h1 id="page-title">From LBX straight to the label.</h1>
+        <p>Load a template, fill its named fields, verify the result, and print through the system dialog or directly via WebUSB. The file never leaves this browser.</p>
       </div>
-      <ol class="process-strip" aria-label="Ablauf">
-        <li><b>1</b><span>LBX wählen</span></li>
-        <li><b>2</b><span>Daten setzen</span></li>
-        <li><b>3</b><span>Drucken</span></li>
+      <ol class="process-strip" aria-label="Workflow">
+        <li><b>1</b><span>Choose LBX</span></li>
+        <li><b>2</b><span>Set data</span></li>
+        <li><b>3</b><span>Print</span></li>
       </ol>
     </section>
 
-    <section class="bench" aria-label="LBX-Druckarbeitsplatz">
+    <section class="bench" aria-label="LBX print workspace">
       <aside class="template-rack panel" aria-labelledby="templates-title">
         <div class="panel-heading">
           <div>
             <span class="panel-index">A</span>
-            <h2 id="templates-title">Vorlage</h2>
+            <h2 id="templates-title">Template</h2>
           </div>
           <span class="file-badge">.lbx</span>
         </div>
@@ -49,20 +49,20 @@
         <label class="drop-zone" id="drop-zone" for="file-input">
           <input id="file-input" type="file" accept=".lbx,application/zip" hidden>
           <span class="drop-icon" aria-hidden="true">LBX</span>
-          <strong>Datei hier ablegen</strong>
-          <span>oder vom Rechner auswählen</span>
+          <strong>Drop a file here</strong>
+          <span>or choose one from this computer</span>
         </label>
 
         <div class="example-heading">
-          <h3>Beispiele</h3>
-          <span>lokal geladen</span>
+          <h3>Examples</h3>
+          <span>loaded locally</span>
         </div>
         <div class="example-list" id="example-list"></div>
 
         <dl class="template-facts" id="template-facts" aria-live="polite">
-          <div><dt>Datei</dt><dd id="fact-file">Noch keine</dd></div>
-          <div><dt>Format</dt><dd id="fact-size">–</dd></div>
-          <div><dt>Objekte</dt><dd id="fact-objects">–</dd></div>
+          <div><dt>File</dt><dd id="fact-file">None yet</dd></div>
+          <div><dt>Size</dt><dd id="fact-size">–</dd></div>
+          <div><dt>Objects</dt><dd id="fact-objects">–</dd></div>
         </dl>
       </aside>
 
@@ -70,11 +70,11 @@
         <div class="panel-heading">
           <div>
             <span class="panel-index">B</span>
-            <h2 id="preview-title">Druckbild</h2>
+            <h2 id="preview-title">Print preview</h2>
           </div>
           <div class="preview-actions">
-            <button class="text-button" id="download-svg" type="button" disabled>SVG laden</button>
-            <button class="text-button" id="reset-values" type="button" disabled>Werte zurücksetzen</button>
+            <button class="text-button" id="download-svg" type="button" disabled>Download SVG</button>
+            <button class="text-button" id="reset-values" type="button" disabled>Reset values</button>
           </div>
         </div>
 
@@ -83,14 +83,14 @@
           <div class="ruler ruler-side" aria-hidden="true"></div>
           <div class="preview-empty" id="preview-empty">
             <span class="empty-sheet" aria-hidden="true"></span>
-            <strong>Noch kein Druckbild</strong>
-            <span>Wähle links ein Beispiel oder lade eine LBX-Datei.</span>
+            <strong>No print preview yet</strong>
+            <span>Choose an example or upload an LBX file.</span>
           </div>
-          <img id="label-preview" alt="Gerenderte Vorschau der LBX-Vorlage" hidden>
+          <img id="label-preview" alt="Rendered preview of the LBX template" hidden>
         </div>
 
         <div class="diagnostics" id="diagnostics" aria-live="polite">
-          <span class="diagnostic-ok">Bereit für eine Vorlage</span>
+          <span class="diagnostic-ok">Ready for a template</span>
         </div>
       </section>
 
@@ -100,56 +100,56 @@
             <span class="panel-index">C</span>
             <h2 id="parameters-title">Parameter</h2>
           </div>
-          <span class="field-count" id="field-count">0 Felder</span>
+          <span class="field-count" id="field-count">0 fields</span>
         </div>
 
         <form id="parameter-form" class="parameter-form">
-          <div class="parameter-empty" id="parameter-empty">Benannte Text-, Datums- und Barcodeobjekte erscheinen nach dem Laden hier.</div>
+          <div class="parameter-empty" id="parameter-empty">Named text, date, and barcode objects will appear here after loading.</div>
           <div id="parameter-fields"></div>
         </form>
 
         <div class="printer-section">
           <div class="printer-heading">
-            <h3>Druckstation</h3>
-            <span id="printer-state">Nicht verbunden</span>
+            <h3>Print station</h3>
+            <span id="printer-state">Not connected</span>
           </div>
 
           <button class="system-print-button" id="system-print-button" type="button" disabled>
-            Systemdruckdialog öffnen
+            Open system print dialog
           </button>
-          <p class="usb-note">Dort installierten USB- oder Netzwerkdrucker, Papierformat, Kopien und Skalierung „100 %“ wählen.</p>
-          <div class="transport-divider"><span>oder direkt per WebUSB</span></div>
+          <p class="usb-note">Select an installed USB or network printer, paper size, copies, and “100%” scale in the dialog.</p>
+          <div class="transport-divider"><span>or print directly via WebUSB</span></div>
 
           <label class="field">
-            <span>Medium</span>
+            <span>Media</span>
             <select id="media-select"></select>
           </label>
 
           <div class="option-row">
             <label class="field compact">
-              <span>Kopien</span>
+              <span>Copies</span>
               <input id="copies-input" type="number" min="1" max="99" value="1" inputmode="numeric">
             </label>
             <label class="switch-field">
               <input id="cut-input" type="checkbox" checked>
               <span class="switch" aria-hidden="true"></span>
-              <span>Automatisch schneiden</span>
+              <span>Auto cut</span>
             </label>
           </div>
 
-          <button class="connect-button" id="connect-button" type="button">Brother QL verbinden</button>
+          <button class="connect-button" id="connect-button" type="button">Connect Brother QL</button>
           <button class="print-button" id="print-button" type="button" disabled>
-            <span>Druckauftrag senden</span>
+            <span>Send print job</span>
             <span class="print-arrow" aria-hidden="true">→</span>
           </button>
-          <p class="usb-note">WebUSB benötigt Chrome oder Edge, HTTPS und einen Brother QL am USB-Anschluss. Medium, Kopien und Schnitt gelten nur für diesen direkten Weg.</p>
+          <p class="usb-note">WebUSB requires Chrome or Edge, HTTPS, and a Brother QL connected by USB. Media, copies, and cut settings apply only to this direct path.</p>
         </div>
       </aside>
     </section>
 
-    <section class="privacy-note" aria-label="Datenschutz und Grenzen">
-      <strong>Lokale Verarbeitung.</strong>
-      <span>LBX-Inhalt und Feldwerte werden nicht hochgeladen. Die Demo bildet einen praktischen b-PAC-ähnlichen Teilumfang ab; unbekannte Objekte werden gemeldet statt still verworfen.</span>
+    <section class="privacy-note" aria-label="Privacy and limitations">
+      <strong>Local processing.</strong>
+      <span>LBX content and field values are never uploaded. The demo implements a practical b-PAC-like subset; unknown objects are reported rather than silently discarded.</span>
     </section>
   </main>
 
