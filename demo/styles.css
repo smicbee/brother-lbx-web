@@ -188,7 +188,12 @@ input:hover, select:hover { border-color: var(--accent-dark); }
 .switch::after { content: ""; position: absolute; width: 13px; height: 13px; left: 2px; top: 2px; background: white; transition: transform .15s ease; }
 .switch-field input:checked + .switch { background: var(--accent); border-color: var(--accent-dark); }
 .switch-field input:checked + .switch::after { transform: translateX(15px); }
-.connect-button, .print-button { width: 100%; min-height: 48px; margin-top: 12px; padding: 10px 14px; border-radius: 0; cursor: pointer; font-weight: 800; }
+.system-print-button, .connect-button, .print-button { width: 100%; min-height: 48px; margin-top: 12px; padding: 10px 14px; border-radius: 0; cursor: pointer; font-weight: 800; }
+.system-print-button { background: var(--ink); color: white; border: 1px solid var(--ink); }
+.system-print-button:hover:not(:disabled) { background: var(--ink-2); }
+.system-print-button:disabled { background: #9aabb2; border-color: #879aa2; cursor: not-allowed; }
+.transport-divider { position: relative; margin: 17px 0 3px; border-top: 1px solid var(--line); text-align: center; }
+.transport-divider span { position: relative; top: -10px; padding: 0 8px; background: white; color: var(--ink-2); font-size: 11px; }
 .connect-button { background: white; color: var(--ink); border: 1px solid var(--ink); }
 .connect-button:hover { background: #edf4f6; }
 .print-button { min-height: 58px; display: flex; align-items: center; justify-content: space-between; background: var(--accent); color: white; border: 1px solid var(--accent-dark); font-family: var(--font-display); font-size: 21px; text-transform: uppercase; }
@@ -241,4 +246,20 @@ input:hover, select:hover { border-color: var(--accent-dark); }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   *, *::before, *::after { transition-duration: .01ms !important; }
+}
+
+@media print {
+  @page { margin: 0; }
+  html, body { width: auto; min-width: 0; margin: 0; padding: 0; background: white; }
+  .topbar, .intro, .template-rack, .control-panel, .privacy-note,
+  .preview-panel > .panel-heading, .ruler, .diagnostics, .toast,
+  .preview-stage::after { display: none !important; }
+  main, .bench, .preview-panel, .preview-stage {
+    width: auto; min-height: 0; margin: 0; padding: 0; display: block;
+    overflow: visible; border: 0; box-shadow: none; background: white;
+  }
+  #label-preview {
+    width: var(--print-width); height: var(--print-height); max-width: none; max-height: none;
+    margin: 0; border: 0; box-shadow: none;
+  }
 }

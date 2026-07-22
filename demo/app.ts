@@ -68,6 +68,7 @@ const copiesInput = byId<HTMLInputElement>('copies-input');
 const cutInput = byId<HTMLInputElement>('cut-input');
 const connectButton = byId<HTMLButtonElement>('connect-button');
 const printButton = byId<HTMLButtonElement>('print-button');
+const systemPrintButton = byId<HTMLButtonElement>('system-print-button');
 const downloadButton = byId<HTMLButtonElement>('download-svg');
 const resetButton = byId<HTMLButtonElement>('reset-values');
 const diagnostics = byId<HTMLDivElement>('diagnostics');
@@ -182,6 +183,10 @@ function renderPreview(): void {
     preview.src = nextUrl;
     preview.hidden = false;
     previewEmpty.hidden = true;
+    const printSize = svgViewBox(currentSvg);
+    preview.style.setProperty('--print-width', `${(printSize.width / 72 * 25.4).toFixed(3)}mm`);
+    preview.style.setProperty('--print-height', `${(printSize.height / 72 * 25.4).toFixed(3)}mm`);
+    systemPrintButton.disabled = false;
     downloadButton.disabled = false;
     resetButton.disabled = false;
     updatePrintButton();
@@ -357,6 +362,10 @@ dropZone.addEventListener('drop', (event) => {
 
 connectButton.addEventListener('click', () => connectPrinter().catch(handleError));
 printButton.addEventListener('click', () => printCurrent().catch(handleError));
+systemPrintButton.addEventListener('click', () => {
+  if (!currentSvg) return;
+  window.print();
+});
 resetButton.addEventListener('click', () => {
   if (!currentDocument) return;
   for (const [name, value] of initialValues) setObject(currentDocument, name, value);

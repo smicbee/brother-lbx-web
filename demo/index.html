@@ -27,7 +27,7 @@
     <section class="intro" aria-labelledby="page-title">
       <div>
         <h1 id="page-title">Vom LBX direkt aufs Etikett.</h1>
-        <p>Vorlage laden, benannte Felder befüllen, Ergebnis kontrollieren und einen Brother QL per USB ansprechen. Die Datei verlässt diesen Browser nicht.</p>
+        <p>Vorlage laden, benannte Felder befüllen, Ergebnis kontrollieren und über den Systemdialog oder direkt per WebUSB drucken. Die Datei verlässt diesen Browser nicht.</p>
       </div>
       <ol class="process-strip" aria-label="Ablauf">
         <li><b>1</b><span>LBX wählen</span></li>
@@ -114,6 +114,12 @@
             <span id="printer-state">Nicht verbunden</span>
           </div>
 
+          <button class="system-print-button" id="system-print-button" type="button" disabled>
+            Systemdruckdialog öffnen
+          </button>
+          <p class="usb-note">Dort installierten USB- oder Netzwerkdrucker, Papierformat, Kopien und Skalierung „100 %“ wählen.</p>
+          <div class="transport-divider"><span>oder direkt per WebUSB</span></div>
+
           <label class="field">
             <span>Medium</span>
             <select id="media-select"></select>
@@ -136,7 +142,7 @@
             <span>Druckauftrag senden</span>
             <span class="print-arrow" aria-hidden="true">→</span>
           </button>
-          <p class="usb-note">WebUSB benötigt Chrome oder Edge, HTTPS und einen Brother QL am USB-Anschluss. Ein Druck startet erst nach Klick auf den Button.</p>
+          <p class="usb-note">WebUSB benötigt Chrome oder Edge, HTTPS und einen Brother QL am USB-Anschluss. Medium, Kopien und Schnitt gelten nur für diesen direkten Weg.</p>
         </div>
       </aside>
     </section>

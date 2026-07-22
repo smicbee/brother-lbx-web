@@ -209,7 +209,7 @@ The browser-only demonstration is available at:
 https://bpac.michaelbeetz.de/
 ```
 
-It loads uploaded or bundled `.lbx` files entirely in the browser, discovers named text/date/barcode objects, updates the SVG preview as values change, and can send the resulting RGBA label image to a connected Brother QL through WebUSB. The page includes product, QR, and auto-length text examples. Build its static deployment bundle with:
+It loads uploaded or bundled `.lbx` files entirely in the browser, discovers named text/date/barcode objects, updates the SVG preview as values change, and offers two print paths: the normal browser/operating-system print dialog for any locally installed USB or network printer, and direct Brother QL WebUSB output. The system-dialog print stylesheet hides the application UI and emits only the label at its SVG-derived physical millimetre dimensions. The page includes product, QR, and auto-length text examples. Build its static deployment bundle with:
 
 ```bash
 npm run demo:build
