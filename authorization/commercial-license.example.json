@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "credentialType": "brother-lbx-web-commercial-license",
+  "grantId": "REPLACE-WITH-UNIQUE-GRANT-ID",
+  "issuer": {
+    "id": "smicbee"
+  },
+  "licensee": {
+    "legalName": "Example GmbH",
+    "domain": "example.com"
+  },
+  "project": {
+    "name": "brother-lbx-web",
+    "repository": "https://github.com/smicbee/brother-lbx-web"
+  },
+  "permissions": [
+    "commercial-production-use"
+  ],
+  "restrictions": {
+    "redistribution": false,
+    "sublicensing": false,
+    "endpointLimit": "REPLACE-WITH-CONTRACT-LIMIT",
+    "printerLimit": "REPLACE-WITH-CONTRACT-LIMIT"
+  },
+  "notBefore": "REPLACE-WITH-ISO-8601-TIMESTAMP",
+  "expires": "REPLACE-WITH-ISO-8601-TIMESTAMP",
+  "writtenPermissionReference": "REPLACE-WITH-EXECUTED-AGREEMENT-REFERENCE"
+}

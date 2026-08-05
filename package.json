@@ -1,0 +1,65 @@
+{
+  "name": "brother-lbx-web",
+  "version": "0.3.1",
+  "description": "Cross-platform MVP parser, SVG/PNG renderer, and Brother QL raster encoder for Brother P-touch LBX templates.",
+  "type": "module",
+  "license": "BUSL-1.1",
+  "bin": {
+    "lbx-render": "./dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./node": {
+      "types": "./dist/node.d.ts",
+      "import": "./dist/node.js"
+    },
+    "./browser": {
+      "types": "./dist/browser.d.ts",
+      "import": "./dist/browser.js"
+    }
+  },
+  "files": [
+    "dist",
+    "scripts/verify-license-credential.mjs",
+    "authorization/commercial-license.example.json",
+    ".github/copilot-instructions.md",
+    "README.md",
+    "LICENSE",
+    "COMMERCIAL-LICENSING.md",
+    "LLMS.md",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "license-policy.json",
+    "LICENSE_PUBLIC_KEY.pem",
+    "LICENSE_REVOCATIONS.json",
+    "LICENSE_REVOCATIONS.json.sig"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prepack": "npm run build",
+    "test": "vitest run",
+    "cli": "node dist/cli.js",
+    "demo:build": "node scripts/build-demo.mjs"
+  },
+  "dependencies": {
+    "@resvg/resvg-js": "^2.6.2",
+    "@thermal-label/brother-ql-core": "0.6.1",
+    "@thermal-label/brother-ql-web": "^0.6.1",
+    "@xmldom/xmldom": "^0.9.10",
+    "bmp-js": "^0.1.0",
+    "fflate": "^0.8.3",
+    "qrcode": "^1.5.4",
+    "sharp": "^0.35.3"
+  },
+  "devDependencies": {
+    "@types/bmp-js": "^0.1.2",
+    "@types/node": "^22.10.2",
+    "@types/qrcode": "^1.5.6",
+    "esbuild": "^0.28.1",
+    "typescript": "^5.7.2",
+    "vitest": "^4.1.10"
+  }
+}

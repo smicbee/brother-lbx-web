@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "credentialType": "brother-lbx-web-license-revocations",
+  "project": {
+    "name": "brother-lbx-web",
+    "repository": "https://github.com/smicbee/brother-lbx-web"
+  },
+  "generatedAt": "2026-08-03T21:38:07Z",
+  "revokedGrantIds": []
+}
