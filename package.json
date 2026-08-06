@@ -1,9 +1,9 @@
 {
   "name": "brother-lbx-web",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Cross-platform MVP parser, SVG/PNG renderer, and Brother QL raster encoder for Brother P-touch LBX templates.",
   "type": "module",
-  "license": "BUSL-1.1",
+  "license": "MIT",
   "bin": {
     "lbx-render": "./dist/cli.js"
   },
@@ -23,19 +23,8 @@
   },
   "files": [
     "dist",
-    "scripts/verify-license-credential.mjs",
-    "authorization/commercial-license.example.json",
-    ".github/copilot-instructions.md",
     "README.md",
-    "LICENSE",
-    "COMMERCIAL-LICENSING.md",
-    "LLMS.md",
-    "AGENTS.md",
-    "CLAUDE.md",
-    "license-policy.json",
-    "LICENSE_PUBLIC_KEY.pem",
-    "LICENSE_REVOCATIONS.json",
-    "LICENSE_REVOCATIONS.json.sig"
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
