@@ -1,5 +1,6 @@
 import { DEVICES, encodeJobForEngine, findMedia, renderImage } from '@thermal-label/brother-ql-core';
 import type { RawImageData } from '@thermal-label/brother-ql-core';
+import { existsSync } from 'node:fs';
 import type { QlRasterOptions } from './types.js';
 
 export interface PngRenderOptions {
@@ -79,8 +80,41 @@ export async function renderSvgToPng(svg: string, options: PngRenderOptions = {}
   await validateEmbeddedRasterImages(svg);
   const { Resvg } = await import('@resvg/resvg-js');
   const dpi = options.dpi ?? 300;
-  const normalizedSvg = await normalizeEmbeddedBmpForResvg(svg);
-  const resvg = new Resvg(normalizedSvg, options.fitWidth ? { fitTo: { mode: 'width', value: options.fitWidth } } : { fitTo: { mode: 'zoom', value: dpi / 96 } });
+  let normalizedSvg = await normalizeEmbeddedBmpForResvg(svg);
+  const liberationDir = '/usr/share/fonts/truetype/liberation';
+  const crosextraDir = '/usr/share/fonts/truetype/crosextra';
+  const fallbackFontFiles = [
+    `${liberationDir}/LiberationSans-Regular.ttf`, `${liberationDir}/LiberationSans-Bold.ttf`,
+    `${liberationDir}/LiberationSans-Italic.ttf`, `${liberationDir}/LiberationSans-BoldItalic.ttf`,
+    `${liberationDir}/LiberationSerif-Regular.ttf`, `${liberationDir}/LiberationSerif-Bold.ttf`,
+    `${liberationDir}/LiberationSerif-Italic.ttf`, `${liberationDir}/LiberationSerif-BoldItalic.ttf`,
+    `${liberationDir}/LiberationMono-Regular.ttf`, `${liberationDir}/LiberationMono-Bold.ttf`,
+    `${liberationDir}/LiberationMono-Italic.ttf`, `${liberationDir}/LiberationMono-BoldItalic.ttf`,
+    `${crosextraDir}/Carlito-Regular.ttf`, `${crosextraDir}/Carlito-Bold.ttf`,
+    `${crosextraDir}/Carlito-Italic.ttf`, `${crosextraDir}/Carlito-BoldItalic.ttf`,
+    `${crosextraDir}/Caladea-Regular.ttf`, `${crosextraDir}/Caladea-Bold.ttf`,
+    `${crosextraDir}/Caladea-Italic.ttf`, `${crosextraDir}/Caladea-BoldItalic.ttf`,
+  ].filter(existsSync);
+  // resvg scans font files but does not apply fontconfig aliases. Without this
+  // explicit metric-compatible alias, an unavailable Arial can silently fall
+  // back to a monospace face and change both wrapping and raster output.
+  const fontAliases = [
+    ['Arial', 'Liberation Sans', `${liberationDir}/LiberationSans-Regular.ttf`],
+    ['Times New Roman', 'Liberation Serif', `${liberationDir}/LiberationSerif-Regular.ttf`],
+    ['Courier New', 'Liberation Mono', `${liberationDir}/LiberationMono-Regular.ttf`],
+    ['Calibri', 'Carlito', `${crosextraDir}/Carlito-Regular.ttf`],
+    ['Cambria', 'Caladea', `${crosextraDir}/Caladea-Regular.ttf`],
+  ] as const;
+  for (const [requested, fallback, regularFile] of fontAliases) {
+    if (existsSync(regularFile)) normalizedSvg = normalizedSvg.replaceAll(`font-family="${requested}"`, `font-family="${fallback}"`);
+  }
+  const fitTo = options.fitWidth ? { mode: 'width' as const, value: options.fitWidth } : { mode: 'zoom' as const, value: dpi / 96 };
+  const resvg = new Resvg(normalizedSvg, {
+    fitTo,
+    font: fallbackFontFiles.length
+      ? { loadSystemFonts: true, fontFiles: fallbackFontFiles, defaultFontFamily: 'Liberation Sans' }
+      : { loadSystemFonts: true },
+  });
   return new Uint8Array(resvg.render().asPng());
 }
 

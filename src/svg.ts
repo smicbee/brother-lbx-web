@@ -4,6 +4,7 @@ import type {
   LbxPointRect, LbxPolyObject, LbxResource, LbxTableObject, LbxTextObject,
   LbxTextRun, SvgRenderOptions,
 } from './types.js';
+import { layoutText } from './text-layout.js';
 
 const CODE39: Record<string, string> = {
   '0': 'nnnwwnwnn', '1': 'wnnwnnnnw', '2': 'nnwwnnnnw', '3': 'wnwwnnnnn', '4': 'nnnwwnnnw',
@@ -21,32 +22,6 @@ function escapeXml(value: string): string {
   return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 }
 
-const MONOCHROME_EMOJI = new Map<string, string>([
-  ['☕', '☕︎'], ['🔥', '♨'], ['❤', '♥'], ['✅', '✓'], ['☑', '☑︎'], ['✔', '✓'], ['❌', '✕'], ['❎', '✕'],
-  ['⭐', '★'], ['🌟', '★'], ['💫', '✦'], ['✨', '✦'], ['💡', '✦'], ['⚠', '⚠︎'], ['ℹ', 'ⓘ'], ['❓', '?'], ['❗', '!'],
-  ['😀', '☺'], ['😃', '☺'], ['😄', '☺'], ['😁', '☺'], ['😊', '☺'], ['🙂', '☺'], ['😉', '☺'], ['😍', '♥'],
-  ['😢', '☹'], ['😭', '☹'], ['☹', '☹︎'], ['😞', '☹'], ['😡', '☹'], ['😠', '☹'],
-  ['👍', '✓'], ['👎', '✕'], ['👌', '○'], ['👏', '✦'], ['🙏', '◇'],
-  ['🎉', '✦'], ['🎊', '✦'], ['🎁', '□'], ['📦', '□'], ['📍', '●'], ['🚀', '↑'],
-  ['🔴', '●'], ['🟠', '●'], ['🟡', '●'], ['🟢', '●'], ['🔵', '●'], ['🟣', '●'], ['🟤', '●'], ['⚫', '●'], ['⚪', '○'],
-  ['📞', '☎'], ['☎', '☎︎'], ['✉', '✉︎'], ['📧', '✉︎'], ['🔒', '▣'], ['🔓', '□'], ['⚙', '⚙︎'], ['🛒', '⌑'],
-  ['➡', '→'], ['⬅', '←'], ['⬆', '↑'], ['⬇', '↓'], ['↗', '↗︎'], ['↘', '↘︎'], ['↙', '↙︎'], ['↖', '↖︎'],
-]);
-
-const EMOJI_SEQUENCE = /(?:\p{Regional_Indicator}{2}|[#*0-9]\uFE0F?\u20E3|\p{Extended_Pictographic}(?:[\uFE0E\uFE0F])?(?:\p{Emoji_Modifier})?(?:\u200D\p{Extended_Pictographic}(?:[\uFE0E\uFE0F])?(?:\p{Emoji_Modifier})?)*)/gu;
-
-function monochromeEmojiText(value: string): string {
-  return value.replace(EMOJI_SEQUENCE, (sequence) => {
-    const normalized = sequence.replace(/[\uFE0E\uFE0F]/gu, '').replace(/\p{Emoji_Modifier}/gu, '');
-    const mapped = MONOCHROME_EMOJI.get(normalized);
-    if (mapped) return mapped;
-    if (/^[#*0-9]\u20E3$/u.test(normalized)) return `[${normalized[0]}]`;
-    if (/^\p{Regional_Indicator}{2}$/u.test(normalized)) return '⚑';
-    const codePoints = [...normalized];
-    if (codePoints.length === 1 && (codePoints[0]?.codePointAt(0) ?? 0) <= 0x2bff) return `${normalized}︎`;
-    return '◇';
-  });
-}
 
 function fmt(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(3).replace(/0+$/, '').replace(/\.$/, '');
@@ -106,71 +81,6 @@ function textRunAttributes(run: LbxTextRun, options: SvgRenderOptions): string {
   return ` font-family="${family}" font-size="${fmt(run.fontSize || options.defaultFontSize || 10)}" font-weight="${fmt(run.fontWeight)}"${run.italic ? ' font-style="italic"' : ''}${decoration ? ` text-decoration="${decoration}"` : ''} fill="${escapeXml(run.color)}"`;
 }
 
-function splitTextRuns(object: LbxTextObject): LbxTextRun[][] {
-  const lines: LbxTextRun[][] = [[]];
-  for (const run of object.runs) {
-    const parts = monochromeEmojiText(run.value).split(/\r\n|\r|\n/);
-    parts.forEach((part, index) => {
-      if (part) lines[lines.length - 1]?.push({ ...run, value: part });
-      if (index < parts.length - 1) lines.push([]);
-    });
-  }
-  return lines.length ? lines : [[{ ...object, value: object.value }]];
-}
-
-function estimatedGlyphWidth(character: string, fontSize: number): number {
-  if (/^[\u200D\uFE0E\uFE0F]$/u.test(character) || /^\p{Mark}$/u.test(character)) return 0;
-  if (/\s/u.test(character)) return fontSize * 0.33;
-  if (/[\u2190-\u27BF]/u.test(character)) return fontSize * 0.9;
-  if (/[il1|.,'`:;]/u.test(character)) return fontSize * 0.28;
-  if (character === 'I') return fontSize * 0.35;
-  if (/[MW@%#&]/u.test(character)) return fontSize * 0.85;
-  if (/[A-Z]/u.test(character)) return fontSize * 0.664;
-  if (/[0-9]/u.test(character)) return fontSize * 0.56;
-  if (/[a-z]/u.test(character)) return fontSize * 0.528;
-  return fontSize * 0.6;
-}
-
-/**
- * AUTOLEN text frames are resized by P-touch Editor after their text changes,
- * but an edited in-memory LBX still carries the old frame rectangle. Estimate
- * the rendered line width so continuous-tape output can grow and shrink before
- * a browser or rasterizer has laid out the SVG text. The one-decimal rounding
- * matches the precision used by Brother's stored point geometry.
- */
-function autoLengthTextWidth(object: LbxTextObject): number | undefined {
-  if (object.control.toUpperCase() !== 'AUTOLEN' || object.vertical || object.angle) return undefined;
-  const widths = splitTextRuns(object).map((line) => {
-    let width = 0;
-    let characters = 0;
-    for (const run of line) {
-      const fontSize = run.fontSize || object.fontSize || 10;
-      const glyphs = [...run.value];
-      characters += glyphs.length;
-      let runWidth = glyphs.reduce((sum, character) => sum + estimatedGlyphWidth(character, fontSize), 0);
-      if (run.fontWeight >= 600) runWidth *= 1.03;
-      if (run.italic) runWidth *= 1.02;
-      width += runWidth;
-    }
-    width += Math.max(0, characters - 1) * object.charSpace;
-    return width;
-  });
-  return Math.round(Math.max(0, ...widths) * 10) / 10;
-}
-
-function lineFontSize(line: LbxTextRun[], object: LbxTextObject, options: SvgRenderOptions): number {
-  return Math.max(...line.map((run) => run.fontSize), object.fontSize || options.defaultFontSize || 10);
-}
-
-function textFirstBaseline(object: LbxTextObject, lineSizes: number[], lineHeights: number[]): number {
-  const totalHeight = lineSizes.length === 1
-    ? lineSizes[0] ?? object.fontSize
-    : (lineHeights.slice(0, -1).reduce((sum, height) => sum + height, 0) + (lineSizes.at(-1) ?? object.fontSize));
-  const firstSize = lineSizes[0] ?? object.fontSize;
-  if (object.verticalAlign === 'TOP') return object.bounds.y + firstSize * 0.8;
-  if (object.verticalAlign === 'BOTTOM') return object.bounds.y + object.bounds.height - totalHeight + firstSize * 0.8;
-  return object.bounds.y + (object.bounds.height - totalHeight) / 2 + firstSize * 0.85;
-}
 
 function clipId(object: LbxTextObject): string {
   let hash = 2166136261;
@@ -182,20 +92,46 @@ function clipId(object: LbxTextObject): string {
 }
 
 function renderText(object: LbxTextObject, options: SvgRenderOptions): string {
-  const lines = splitTextRuns(object);
+  const defaultFontSize = Math.max(0.01, options.defaultFontSize ?? 10);
+  const layoutObject = (object.fontSize > 0 && object.runs.every((run) => run.fontSize > 0))
+    ? object
+    : {
+        ...object,
+        fontSize: object.fontSize > 0 ? object.fontSize : defaultFontSize,
+        runs: object.runs.map((run) => ({ ...run, fontSize: run.fontSize > 0 ? run.fontSize : defaultFontSize })),
+      };
+  const layout = layoutText(layoutObject);
+  const hasFrame = !['', 'NULL', 'NONE'].includes((object.frameStyle ?? 'NULL').toUpperCase()) && ((object.frameWidthX ?? 0) > 0 || (object.frameWidthY ?? 0) > 0);
+  const hasFill = !['', 'NULL', 'NONE'].includes((object.brushStyle ?? 'NULL').toUpperCase());
+  const frameWidth = Math.max(0, ((object.frameWidthX ?? 0) + (object.frameWidthY ?? 0)) / 2);
+  const frameRect = hasFrame || hasFill
+    ? `<rect x="${fmt(layout.bounds.x + (hasFrame ? frameWidth / 2 : 0))}" y="${fmt(layout.bounds.y + (hasFrame ? frameWidth / 2 : 0))}" width="${fmt(Math.max(0, layout.bounds.width - (hasFrame ? frameWidth : 0)))}" height="${fmt(Math.max(0, layout.bounds.height - (hasFrame ? frameWidth : 0)))}" fill="${hasFill ? escapeXml(object.brushColor ?? '#000000') : 'none'}"${hasFrame ? ` stroke="${escapeXml(object.frameColor ?? '#000000')}" stroke-width="${fmt(frameWidth)}" shape-rendering="crispEdges"` : ''}${transform(layout.bounds, object.angle)} />`
+    : '';
   const anchor = textAnchor(object);
-  const x = anchor === 'end' ? object.bounds.x + object.bounds.width : anchor === 'middle' ? object.bounds.x + object.bounds.width / 2 : object.bounds.x;
-  const lineSizes = lines.map((line) => lineFontSize(line, object, options));
-  const lineHeights = lineSizes.map((size) => size * (1 + object.lineSpace / 100));
-  const baseline = textFirstBaseline(object, lineSizes, lineHeights);
-  const text = lines.map((line, lineIndex) => line.map((run, runIndex) => {
-    const position = runIndex === 0 ? ` x="${fmt(x)}" dy="${lineIndex ? fmt(lineHeights[lineIndex - 1] ?? lineSizes[lineIndex - 1] ?? object.fontSize) : '0'}"` : '';
-    return `<tspan${position}${textRunAttributes(run, options)}>${escapeXml(run.value)}</tspan>`;
-  }).join('')).join('');
-  const spacing = object.charSpace ? ` letter-spacing="${fmt(object.charSpace)}"` : '';
+  const x = anchor === 'end' ? layout.bounds.x + layout.bounds.width : anchor === 'middle' ? layout.bounds.x + layout.bounds.width / 2 : layout.bounds.x;
+  const lineHeights = layout.lines.map((line) => line.height);
+  const lineSizes = layout.lines.map((line) => line.runs.length
+    ? Math.max(...line.runs.map((run) => run.fontSize))
+    : (object.fontSize || options.defaultFontSize || 10) * layout.scale);
+  const totalHeight = layout.contentHeight;
+  const firstSize = lineSizes[0] ?? object.fontSize ?? options.defaultFontSize ?? 10;
+  const baseline = object.verticalAlign === 'TOP'
+    ? layout.bounds.y + firstSize * 0.91
+    : object.verticalAlign === 'BOTTOM'
+      ? layout.bounds.y + layout.bounds.height - totalHeight + firstSize * 0.91
+      : layout.bounds.y + (layout.bounds.height - totalHeight) / 2 + firstSize * 0.91;
+  const text = layout.lines.map((line, lineIndex) => {
+    const dy = lineIndex ? fmt(lineHeights[lineIndex - 1] ?? lineSizes[lineIndex - 1] ?? object.fontSize) : '0';
+    if (!line.runs.length) return `<tspan x="${fmt(x)}" dy="${dy}"></tspan>`;
+    return line.runs.map((run, runIndex) => {
+      const position = runIndex === 0 ? ` x="${fmt(x)}" dy="${dy}"` : '';
+      return `<tspan${position}${textRunAttributes(run, options)}>${escapeXml(run.value)}</tspan>`;
+    }).join('');
+  }).join('');
+  const spacing = layout.charSpace ? ` letter-spacing="${fmt(layout.charSpace)}"` : '';
   const clipping = object.clipFrame ? ` clip-path="url(#${clipId(object)})"` : '';
-  const definition = object.clipFrame ? `<defs><clipPath id="${clipId(object)}"><rect ${rectAttrs(object.bounds)} /></clipPath></defs>` : '';
-  return `${definition}<text x="${fmt(x)}" y="${fmt(baseline)}" text-anchor="${anchor}"${spacing}${clipping}${transform(object.bounds, object.angle)}>${text}</text>`;
+  const definition = object.clipFrame ? `<defs><clipPath id="${clipId(object)}"><rect ${rectAttrs(layout.bounds)} /></clipPath></defs>` : '';
+  return `${definition}${frameRect}<text data-lbx-effective-width="${fmt(layout.bounds.width)}" data-lbx-effective-height="${fmt(layout.bounds.height)}" data-lbx-layout-scale="${fmt(layout.scale)}" data-lbx-line-count="${layout.lines.length}" x="${fmt(x)}" y="${fmt(baseline)}" text-anchor="${anchor}"${spacing}${clipping}${transform(layout.bounds, object.angle)}>${text}</text>`;
 }
 
 function renderImage(object: LbxImageObject): string {
@@ -420,9 +356,17 @@ function renderOne(object: LbxObject, options: SvgRenderOptions): string {
 }
 
 function visitObjectExtents(object: LbxObject, current: { maxX: number; maxY: number }): void {
-  const contentWidth = object.kind === 'text' ? autoLengthTextWidth(object) : undefined;
-  current.maxX = Math.max(current.maxX, object.bounds.x + (contentWidth ?? object.bounds.width));
-  current.maxY = Math.max(current.maxY, object.bounds.y + object.bounds.height);
+  const bounds = object.kind === 'text' ? layoutText(object).bounds : object.bounds;
+  const radians = object.angle * Math.PI / 180;
+  if (radians) {
+    const halfWidth = Math.abs(bounds.width * Math.cos(radians)) / 2 + Math.abs(bounds.height * Math.sin(radians)) / 2;
+    const halfHeight = Math.abs(bounds.width * Math.sin(radians)) / 2 + Math.abs(bounds.height * Math.cos(radians)) / 2;
+    current.maxX = Math.max(current.maxX, bounds.x + bounds.width / 2 + halfWidth);
+    current.maxY = Math.max(current.maxY, bounds.y + bounds.height / 2 + halfHeight);
+  } else {
+    current.maxX = Math.max(current.maxX, bounds.x + bounds.width);
+    current.maxY = Math.max(current.maxY, bounds.y + bounds.height);
+  }
   if (object.kind === 'table') {
     for (const cell of object.cells) for (const child of cell.objects) visitObjectExtents(child, current);
   }

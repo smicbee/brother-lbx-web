@@ -284,6 +284,8 @@ function parseText(element: XmlElement, path: string): LbxTextObject {
   const align = firstChild(element, 'textAlign');
   const control = firstChild(element, 'textControl');
   const textStyle = firstChild(element, 'textStyle');
+  const pen = firstChild(style, 'pen');
+  const brush = firstChild(style, 'brush');
   const value = textOf(firstChild(element, 'data'));
   return {
     ...baseObject(element, path),
@@ -299,6 +301,12 @@ function parseText(element: XmlElement, path: string): LbxTextObject {
     charSpace: numberAttr(textStyle, 'charSpace'),
     lineSpace: numberAttr(textStyle, 'lineSpace'),
     vertical: booleanAttr(textStyle, 'vertical'),
+    frameStyle: pen?.getAttribute('style') || 'NULL',
+    frameWidthX: numberAttr(pen, 'widthX'),
+    frameWidthY: numberAttr(pen, 'widthY'),
+    frameColor: pen?.getAttribute('color') || '#000000',
+    brushStyle: brush?.getAttribute('style') || 'NULL',
+    brushColor: brush?.getAttribute('color') || '#000000',
     runs: parseTextRuns(element, value, font),
     bounds: rectFromStyle(style),
   };

@@ -57,6 +57,12 @@ export interface LbxTextObject extends LbxObjectBase {
   charSpace: number;
   lineSpace: number;
   vertical: boolean;
+  frameStyle?: string;
+  frameWidthX?: number;
+  frameWidthY?: number;
+  frameColor?: string;
+  brushStyle?: string;
+  brushColor?: string;
   runs: LbxTextRun[];
 }
 
