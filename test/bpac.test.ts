@@ -51,6 +51,24 @@ describe('cross-platform b-PAC compatibility layer', () => {
     expect(document.renderToSvg()).toContain('>12.9<');
   });
 
+  it('exposes named template values as editable fields and applies free text', async () => {
+    const document = await openFixture();
+    const fields = document.GetEditableFields();
+
+    expect(fields.map((field) => field.name)).toEqual(['barcode', 'product', 'price', 'date', 'weight']);
+    expect(fields.find((field) => field.name === 'product')).toMatchObject({
+      kind: 'text',
+      value: '--',
+      multiline: true,
+      occurrences: 1,
+    });
+
+    expect(document.SetFieldValue('product', 'Operator note\nsecond line')).toBe(true);
+    expect(document.GetObject('product')?.Text).toBe('Operator note\nsecond line');
+    expect(document.renderToSvg()).toContain('Operator note');
+    expect(document.SetFieldValue('missing-field', 'ignored')).toBe(false);
+  });
+
   it('sets media by ID or SKU and rejects unsupported media', async () => {
     const document = await openFixture();
     const originalHeight = document.document.paper.height;

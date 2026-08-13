@@ -1,8 +1,8 @@
 import { MEDIA } from '@thermal-label/brother-ql-core';
 import type { BrotherQLMedia } from '@thermal-label/brother-ql-core';
-import { parseLBX, walkObjects } from './parser.js';
+import { getEditableFields, parseLBX, setObject, walkObjects } from './parser.js';
 import { renderToSvg } from './svg.js';
-import type { BindingValue, LbxDocument, LbxInput, LbxObject, LbxPointRect, SvgRenderOptions } from './types.js';
+import type { BindingValue, LbxDocument, LbxEditableField, LbxInput, LbxObject, LbxPointRect, SvgRenderOptions } from './types.js';
 
 const POINTS_PER_MM = 72 / 25.4;
 const SUPPORTED_PRINTERS = new Map([
@@ -281,6 +281,14 @@ export class BpacDocument {
       .map((object) => new BpacObject(object));
   }
 
+  getEditableFields(): LbxEditableField[] {
+    return getEditableFields(this.document);
+  }
+
+  setFieldValue(name: string, value: BindingValue): boolean {
+    return setObject(this.document, name, value);
+  }
+
   getMediaId(): number | undefined {
     return numericPaperFormat(this.document) ?? inferMedia(this.document)?.id;
   }
@@ -331,6 +339,8 @@ export class BpacDocument {
 
   GetObject(name: string): BpacObject | undefined { return this.getObject(name); }
   GetObjects(name?: string): BpacObject[] { return this.getObjects(name); }
+  GetEditableFields(): LbxEditableField[] { return this.getEditableFields(); }
+  SetFieldValue(name: string, value: BindingValue): boolean { return this.setFieldValue(name, value); }
   GetMediaId(): number | undefined { return this.getMediaId(); }
   GetMediaName(): string | undefined { return this.getMediaName(); }
   GetPrinter(): BpacPrinter { return this.printer; }

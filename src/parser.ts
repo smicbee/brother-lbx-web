@@ -1,7 +1,7 @@
 import { unzipSync } from 'fflate';
 import { DOMParser, XMLSerializer } from '@xmldom/xmldom';
 import type {
-  BindingValue, LbxBarcodeObject, LbxDateTimeObject, LbxDocument, LbxImageObject,
+  BindingValue, LbxBarcodeObject, LbxDateTimeObject, LbxDocument, LbxEditableField, LbxImageObject,
   LbxObject, LbxPaper, LbxPointRect, LbxPolyObject, LbxResource, LbxTableCell,
   LbxTableObject, LbxTextObject, LbxTextRun, LbxUnknownObject, LbxWarning,
   LbxInput,
@@ -532,6 +532,30 @@ export function walkObjects(document: LbxDocument): LbxObject[] {
 function bindingText(value: BindingValue): string {
   if (value instanceof Date) return value.toISOString().slice(0, 10);
   return String(value);
+}
+
+/** Lists named text/date/barcode values suitable for a free-text form. */
+export function getEditableFields(document: LbxDocument): LbxEditableField[] {
+  const fields = new Map<string, LbxEditableField>();
+  for (const object of walkObjects(document)) {
+    if (!object.name || (object.kind !== 'text' && object.kind !== 'barcode' && object.kind !== 'datetime')) continue;
+    const multiline = object.kind === 'text'
+      && (object.autoLineFeed || object.control === 'LONGTEXT' || object.value.includes('\n'));
+    const existing = fields.get(object.name);
+    if (existing) {
+      existing.occurrences += 1;
+      existing.multiline ||= multiline;
+      continue;
+    }
+    fields.set(object.name, {
+      name: object.name,
+      kind: object.kind,
+      value: object.value,
+      multiline,
+      occurrences: 1,
+    });
+  }
+  return [...fields.values()];
 }
 
 export function setObject(document: LbxDocument, name: string, value: BindingValue): boolean {

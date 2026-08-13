@@ -155,6 +155,17 @@ export interface LbxDocument {
 export type LbxInput = Uint8Array | ArrayBuffer;
 export type BindingValue = string | number | Date;
 
+/** A named LBX value that a print UI may safely expose for editing. */
+export interface LbxEditableField {
+  name: string;
+  kind: 'text' | 'barcode' | 'datetime';
+  value: string;
+  /** True when the template text supports or already contains multiple lines. */
+  multiline: boolean;
+  /** Number of bindable objects updated together when this field is set. */
+  occurrences: number;
+}
+
 export interface SvgRenderOptions {
   fontFamily?: string;
   defaultFontSize?: number;

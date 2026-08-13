@@ -54,6 +54,12 @@ const bpac = BpacDocument.open(
 bpac.GetObject('product')!.Text = 'Coffee & Tea';
 bpac.GetObject('barcode')!.SetData('ABC123');
 
+// Build a free-text form from the named values stored in the LBX.
+for (const field of bpac.GetEditableFields()) {
+  console.log(field.name, field.kind, field.value, field.multiline);
+}
+bpac.SetFieldValue('product', 'Operator note');
+
 console.log(bpac.GetMediaId());                 // 259
 console.log(bpac.GetMediaName());               // 62mm continuous (DK-22205)
 console.log(bpac.GetPrinter().GetSupportedMediaIds());

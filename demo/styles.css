@@ -26,9 +26,9 @@ body {
   font-size: 16px;
   line-height: 1.45;
 }
-button, input, select { font: inherit; }
+button, input, select, textarea { font: inherit; }
 button, label, select { -webkit-tap-highlight-color: transparent; }
-button:focus-visible, input:focus-visible, select:focus-visible, .drop-zone:focus-within {
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, .drop-zone:focus-within {
   outline: 3px solid var(--signal);
   outline-offset: 2px;
 }
@@ -171,11 +171,12 @@ h3 { margin: 0; font-family: var(--font-display); font-size: 20px; text-transfor
 .field { display: grid; gap: 5px; margin-bottom: 14px; }
 .field > span:first-child { font-size: 12px; font-weight: 700; }
 .field small { color: var(--ink-2); font-size: 11px; }
-input, select {
+input, select, textarea {
   width: 100%; min-height: 42px; padding: 8px 10px;
   border: 1px solid var(--line-dark); border-radius: 0; background: white; color: var(--ink);
 }
-input:hover, select:hover { border-color: var(--accent-dark); }
+textarea { resize: vertical; line-height: 1.35; }
+input:hover, select:hover, textarea:hover { border-color: var(--accent-dark); }
 .printer-section { margin-top: auto; padding-top: 20px; border-top: 2px solid var(--ink); }
 .printer-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
 .printer-heading > span { color: var(--ink-2); font-size: 12px; font-weight: 700; }

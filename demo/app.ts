@@ -1,5 +1,5 @@
-import { parseLBX, renderToSvg, setObject, walkObjects } from '../src/index.js';
-import type { LbxDocument, LbxObject, LbxResource } from '../src/types.js';
+import { getEditableFields, parseLBX, renderToSvg, setObject, walkObjects } from '../src/index.js';
+import type { LbxDocument, LbxEditableField, LbxResource } from '../src/types.js';
 import { connectBrotherQlWebUsb } from '../src/browser.js';
 import { MEDIA, findMedia } from '@thermal-label/brother-ql-core';
 import type { RawImageData } from '@thermal-label/brother-ql-core';
@@ -99,19 +99,9 @@ function setDiagnostics(message: string, kind: 'ok' | 'warn' | 'error' = 'ok'): 
   diagnostics.append(item);
 }
 
-function isBindable(object: LbxObject): object is LbxObject & { value: string } {
-  return Boolean(object.name) && (object.kind === 'text' || object.kind === 'barcode' || object.kind === 'datetime');
-}
-
-function uniqueBindableObjects(documentValue: LbxDocument): Array<LbxObject & { value: string }> {
-  const byName = new Map<string, LbxObject & { value: string }>();
-  for (const object of walkObjects(documentValue)) if (isBindable(object) && !byName.has(object.name)) byName.set(object.name, object);
-  return [...byName.values()];
-}
-
-function displayKind(object: LbxObject): string {
-  if (object.kind === 'barcode') return `Barcode · ${object.protocol || 'unknown'}`;
-  if (object.kind === 'datetime') return 'Date';
+function displayKind(field: LbxEditableField): string {
+  if (field.kind === 'barcode') return 'Barcode';
+  if (field.kind === 'datetime') return 'Date';
   return 'Text';
 }
 
@@ -217,27 +207,31 @@ function setRenderedSize(svg: string): void {
 
 function renderParameterFields(documentValue: LbxDocument): void {
   parameterFields.replaceChildren();
-  const objects = uniqueBindableObjects(documentValue);
-  parameterEmpty.hidden = objects.length > 0;
-  byId('field-count').textContent = `${objects.length} ${objects.length === 1 ? 'field' : 'fields'}`;
-  initialValues = new Map(objects.map((object) => [object.name, object.value]));
+  const fields = getEditableFields(documentValue);
+  parameterEmpty.hidden = fields.length > 0;
+  byId('field-count').textContent = `${fields.length} ${fields.length === 1 ? 'field' : 'fields'}`;
+  initialValues = new Map(fields.map((field) => [field.name, field.value]));
 
-  for (const object of objects) {
+  for (const field of fields) {
     const label = document.createElement('label');
     label.className = 'field';
     const title = document.createElement('span');
-    title.textContent = fieldLabel(object.name);
-    const input = document.createElement('input');
-    input.name = object.name;
-    input.value = object.value;
-    input.type = object.kind === 'datetime' && /^\d{4}-\d{2}-\d{2}$/.test(object.value) ? 'date' : 'text';
+    title.textContent = fieldLabel(field.name);
+    const input = field.multiline ? document.createElement('textarea') : document.createElement('input');
+    input.name = field.name;
+    input.value = field.value;
+    if (input instanceof HTMLInputElement) {
+      input.type = field.kind === 'datetime' && /^\d{4}-\d{2}-\d{2}$/.test(field.value) ? 'date' : 'text';
+    } else {
+      input.rows = 3;
+    }
     input.autocomplete = 'off';
-    input.dataset.objectKind = object.kind;
+    input.dataset.objectKind = field.kind;
     const help = document.createElement('small');
-    help.textContent = `${object.name} · ${displayKind(object)}`;
+    help.textContent = `${field.name} · ${displayKind(field)}${field.multiline ? ' · free text' : ''}`;
     input.addEventListener('input', () => {
       if (!currentDocument) return;
-      setObject(currentDocument, object.name, input.value);
+      setObject(currentDocument, field.name, input.value);
       scheduleRender();
     });
     label.append(title, input, help);
