@@ -243,4 +243,6 @@ End-to-end tests also use two public LBX files from [`jdlien/lbx-utils`](https:/
 - `default-text-only-12mm.lbx` — landscape, auto-length, and text
 - `single_image.lbx` — embedded 32-bit BMP
 
-The tests cover parsing, SVG dimensions, visible PNG pixels, and Brother raster commands. Source URLs and SHA-256 checksums are documented in `test/fixtures/README.md`.
+A user-supplied SEO/FA compatibility corpus adds 75 more LBX revisions (38 `.lbx`, 37 `.lbx.bak`). Every file is hash-verified, parsed without warnings, rendered with deterministic DateTime options, rasterized, and checked for visible output. All 20 `date_inlabqueue_date` bindings are exercised as text fields. The archive contains no native Brother DateTime object; native `atPrint` and format-ID coverage remains in the dedicated synthetic DateTime regression. Internal UNC printer queue names were removed before committing the fixtures.
+
+The tests cover parsing, SVG dimensions, visible PNG pixels, binding behavior, and Brother raster commands. Source URLs, provenance, sanitization, and SHA-256 checksums are documented in `test/fixtures/README.md`.

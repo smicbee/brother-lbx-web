@@ -45,3 +45,13 @@ SHA-256:
 `2b2b10593379eef763dca8146820b8f050f64b2c68e218136b06953ba9481cd7`
 
 Covers an embedded 32-bit BMP resource.
+
+## User-supplied SEO/FA regression corpus
+
+Directory: `seo-fa-lab-rev1/`
+
+Source: `1_SEO_FA_LAB_rev1.zip`, supplied by the project owner for LBX compatibility regression testing on 2026-08-14. The corpus contains all 75 supplied files: 38 current `.lbx` templates and 37 `.lbx.bak` revisions. Before inclusion, internal UNC printer queue names were normalized to `Brother PT-P950NW`; label content, geometry, and embedded resources were otherwise preserved. `manifest.json` records every original filename plus the committed byte size and SHA-256 digest so accidental fixture changes are detected.
+
+The parameterized corpus test opens every file as an LBX archive, parses every object, requires zero parser warnings, renders deterministic SVG, rasterizes to PNG, and verifies visible output. It also binds every `date_inlabqueue_date` field.
+
+Despite the date-like field names, this archive contains **no native Brother `text:datetime` object**. Its 20 `date_inlabqueue_date` occurrences are ordinary bindable text objects. Native `atPrint` and DateTime format-ID behavior is covered separately by the synthetic DateTime regression in `test/lbx.test.ts`.

@@ -1,0 +1,385 @@
+{
+  "source_archive": "1_SEO_FA_LAB_rev1.zip",
+  "entry_count": 75,
+  "native_datetime_objects": 0,
+  "sanitization": [
+    "Internal UNC printer queue names normalized to Brother PT-P950NW; label content and resources otherwise preserved."
+  ],
+  "entries": [
+    {
+      "file": "1_SEO_FA_LAB_rev1.lbx",
+      "bytes": 16888,
+      "sha256": "f336cee65f002c57527a92c76477f3a95c229166ad21203a239dacd86177c45c"
+    },
+    {
+      "file": "1_SEO_FA_LAB_rev1.lbx.bak",
+      "bytes": 17271,
+      "sha256": "9649fe0b4e8cf5e1e1566e72035d7ffa506db5c90c61b331bd8cb048f21d67ff"
+    },
+    {
+      "file": "1_SEO_FA_User_ID.lbx",
+      "bytes": 1868,
+      "sha256": "699451ac045ca47609c26f0e176a75ddc2919caf9a41e80721cf2d4e16daaf59"
+    },
+    {
+      "file": "1_SEO_FA_User_ID.lbx.bak",
+      "bytes": 2121,
+      "sha256": "07bb456e428dfc5e61c8ca6c62e13c2865155e36e26c23695bdf55677cd5556f"
+    },
+    {
+      "file": "1_SEO_FA_User_ID_rev1.lbx",
+      "bytes": 1870,
+      "sha256": "3155bc232bb9a79d901f99f72aee70745e9324badb461a3ab1f3a2f0d62fabd8"
+    },
+    {
+      "file": "1_SEO_FA_User_ID_rev1.lbx.bak",
+      "bytes": 2122,
+      "sha256": "62b5e1d8489ac54c10a6e214c99f353a8c698309944c4401a8f07dbf2909752c"
+    },
+    {
+      "file": "1_Task_n_task_detail_SEO.lbx",
+      "bytes": 64137,
+      "sha256": "509141275fb3888dcd81b4f8a3381c6c594ce8fc86ed88fce0827cd87b12fc67"
+    },
+    {
+      "file": "1_Task_n_task_detail_SEO.lbx.bak",
+      "bytes": 64416,
+      "sha256": "371059012df30987a202dc89d5374a5d64acf1afef48613667e68ecb12835efa"
+    },
+    {
+      "file": "1_Task_n_task_detail_user_SEO.lbx",
+      "bytes": 64206,
+      "sha256": "345da0b642bb42fac835e2a9ba1dd0746ee1ef53a93b52befac5bc618c2a6444"
+    },
+    {
+      "file": "1_Task_n_task_detail_user_SEO.lbx.bak",
+      "bytes": 64485,
+      "sha256": "b7dd9c13b6d7f3dcbe9c167e30fbcbf051ddcbce8beb5766b6ae418514c3a401"
+    },
+    {
+      "file": "24mm Close Task.lbx",
+      "bytes": 1898,
+      "sha256": "491a8491948c05b4d21d39937fd4eabbff0f7b6d76ce8fd8e04dc953e0bb9447"
+    },
+    {
+      "file": "24mm Close Task.lbx.bak",
+      "bytes": 2147,
+      "sha256": "ac38d121d69372fe594090560a437c931b619fcbe3f71a9f32810b56adddbd40"
+    },
+    {
+      "file": "24mmTaskEquipUser.lbx",
+      "bytes": 89287,
+      "sha256": "1c56abaa8db18c17bd5d1c40238533b58ed31b228916a395afe5935b5389a046"
+    },
+    {
+      "file": "24mmTaskEquipUser.lbx.bak",
+      "bytes": 90656,
+      "sha256": "ed6d6e1090ae2bb90117faca298c59f2f3dcb115af604dd7f0d61b69755f2ea8"
+    },
+    {
+      "file": "2_1_SEO_FA_LAB_rev1.lbx",
+      "bytes": 16903,
+      "sha256": "f54530491abbfe2f31eae9d2f3ef5fdbba2572f809cd8aa342d55bdb69c984a9"
+    },
+    {
+      "file": "2_1_SEO_FA_LAB_rev1.lbx.bak",
+      "bytes": 17285,
+      "sha256": "5d98a758ee65c146d49d2845a683120d4ced71e9ffcb765a0a4cf932207b3e07"
+    },
+    {
+      "file": "2_1_Task_n_task_detail_user_SEO.lbx",
+      "bytes": 64209,
+      "sha256": "482486a739b62d93c3c4d48f3b65269f12806163438096da82918a423bcf6ff0"
+    },
+    {
+      "file": "2_1_Task_n_task_detail_user_SEO.lbx.bak",
+      "bytes": 64489,
+      "sha256": "8fd2c887a3bb5ed2dfbeb00e17bf088e9cca1c6f7a679d3c134c912d4398be06"
+    },
+    {
+      "file": "3_2_1_SEO_FA_LAB_rev1.lbx",
+      "bytes": 16924,
+      "sha256": "bccd3deb366e7e6e829e70777536f8fbe508bce82a4eb2afa9660fc20bcba686"
+    },
+    {
+      "file": "3_2_1_SEO_FA_LAB_rev1.lbx.bak",
+      "bytes": 17307,
+      "sha256": "27ee1cef29bc7f2e3e2fc7406db91c365eba9536af6466ab84b7cf14ecd50b6a"
+    },
+    {
+      "file": "4_3_2_1_SEO_FA_LAB_rev1.lbx",
+      "bytes": 64407,
+      "sha256": "ae91c3fb29ca304f769f46516fc57a8408516bfcdfc10be26bf5062ee907ce54"
+    },
+    {
+      "file": "4_3_2_1_SEO_FA_LAB_rev1.lbx.bak",
+      "bytes": 64687,
+      "sha256": "329dcc4a71eabf96a2067b39d516dd9d3c848d89077bdda69b1ae7867d9f3856"
+    },
+    {
+      "file": "5_4_3_2_1_SEO_FA_LAB_rev1.lbx",
+      "bytes": 64406,
+      "sha256": "8ed3e1d6037a64b363a44966fb241568f05af4b5161b350857ff9c2bf45b7da3"
+    },
+    {
+      "file": "5_4_3_2_1_SEO_FA_LAB_rev1.lbx.bak",
+      "bytes": 64685,
+      "sha256": "53466d0ac26e18e142f9fbc1b3325f55582c2ff38bfc2d8a4b112ef625aa8d99"
+    },
+    {
+      "file": "Device Type.lbx",
+      "bytes": 1687,
+      "sha256": "cd0e44559da58b4ac0d65df8f1bf3a66011a4a922688b15eb6a5d4e6da8bb6e8"
+    },
+    {
+      "file": "Device Type.lbx.bak",
+      "bytes": 1937,
+      "sha256": "84c35ca6293a704d90f165da187d57371358f5583b40a443773485807326099d"
+    },
+    {
+      "file": "MUC 24mm_task-taskdetail.lbx",
+      "bytes": 3735,
+      "sha256": "bf208edd9ad2aa93fdbdfed96b0ad5372f805072fe99c72e427993b977413b2f"
+    },
+    {
+      "file": "MUC 24mm_task-taskdetail.lbx.bak",
+      "bytes": 3735,
+      "sha256": "bf208edd9ad2aa93fdbdfed96b0ad5372f805072fe99c72e427993b977413b2f"
+    },
+    {
+      "file": "MUC_Job_24mm.lbx",
+      "bytes": 2761,
+      "sha256": "6560a75df1c39fe9a2125108513e877c84846f50f0911750868ad838b6d6a890"
+    },
+    {
+      "file": "MUC_Job_24mm.lbx.bak",
+      "bytes": 3009,
+      "sha256": "017185ef76feb069099634be915e85ead00a4ccd6a8337150a74c52c97f19a76"
+    },
+    {
+      "file": "MUC_Job_Simple_24mm.lbx",
+      "bytes": 2342,
+      "sha256": "3fce4fd6b503e86a98c15945081808c81bfaa56c1cdc90cc463931f1f660b63c"
+    },
+    {
+      "file": "MUC_Job_Simple_24mm.lbx.bak",
+      "bytes": 2591,
+      "sha256": "e68829a34faed7d0ea217c0e9a5b4790a81de7808788fea8f469ffd93e570ea9"
+    },
+    {
+      "file": "MUC_Job_Wafer24mm.lbx",
+      "bytes": 2758,
+      "sha256": "a000646aae8d7c11a005ef5f78a0d3df3302cbeb8bf156208944a4860ced5288"
+    },
+    {
+      "file": "MUC_Job_Wafer24mm.lbx.bak",
+      "bytes": 3006,
+      "sha256": "8d2ed9c8e4403549f267b3b2748c8ffbae3bf09f2df7cd2b6da457755272eca7"
+    },
+    {
+      "file": "MUC_Sample_BasicTypes_24mm.lbx",
+      "bytes": 2124,
+      "sha256": "3445d0160bb2710f8a202bbede84ed82b27ae018b177849dbe9ddca84b7195d3"
+    },
+    {
+      "file": "MUC_Sample_BasicTypes_24mm.lbx.bak",
+      "bytes": 2181,
+      "sha256": "dc8f0138b5e0b3f6accc5b34433142b3378f43f3bbd10912f9fc58f174fc3b32"
+    },
+    {
+      "file": "MUC_Sample_Simple_24mm.lbx",
+      "bytes": 2082,
+      "sha256": "a848e5787592e9115f3c91fe75ea039649476fc48662552dc6e385ff1a9e5870"
+    },
+    {
+      "file": "MUC_Sample_Simple_24mm.lbx.bak",
+      "bytes": 2330,
+      "sha256": "672a9f0b1b22e99fb1afc7102597a6172927ef1a437f5f1bb2ffa82fc24d06c3"
+    },
+    {
+      "file": "MUC_label_TEM_24mm.lbx",
+      "bytes": 2009,
+      "sha256": "935a011757d09065e82c86865ca80d4a9b8f520e3b09d5d77f48fab8df14f4b3"
+    },
+    {
+      "file": "MUC_label_TEM_24mm.lbx.bak",
+      "bytes": 2258,
+      "sha256": "deb8a58b785c9297eef851d222dd8435ffc8b43a2eca60ad7adfc569b7802069"
+    },
+    {
+      "file": "SEO_ESD_BOX_label.lbx",
+      "bytes": 64400,
+      "sha256": "880ef23528306d316eb4cbea9a1f98376aa7bfeaa7bfded549f47c7ccaac1f76"
+    },
+    {
+      "file": "SEO_ESD_BOX_label.lbx.bak",
+      "bytes": 64678,
+      "sha256": "76658a102879fa96d595f18712ef6dae367c3757df180140c769be49b05dd39b"
+    },
+    {
+      "file": "SEO_FA_LAB.lbx",
+      "bytes": 2188,
+      "sha256": "cb0a9d8f42d707e12f9d715a76c328b9fcca3ea19e4cba6716310723aa26c8ba"
+    },
+    {
+      "file": "SEO_FA_LAB.lbx.bak",
+      "bytes": 2439,
+      "sha256": "821cc93493aafd74f5c67f16a4bb31b4e6b69f1bd2d4889c2f15f8764a09596d"
+    },
+    {
+      "file": "SEO_FA_LAB_rev1.lbx",
+      "bytes": 16878,
+      "sha256": "6ebddd956c50d459c8dae7efc6234b29c03a38c77fc57822cf43e680027629b3"
+    },
+    {
+      "file": "SEO_FA_LAB_rev1.lbx.bak",
+      "bytes": 17261,
+      "sha256": "5c25dd5d18dff35d7643ac8792a8b7514ec09be7b85c79066d0d086b7acbc7b8"
+    },
+    {
+      "file": "SEO_FA_User_ID.lbx",
+      "bytes": 2014,
+      "sha256": "df5586081bb67e8731753e4259447d1594772e6b13217d6bf47230cac8f3a4d2"
+    },
+    {
+      "file": "SEO_FA_User_ID.lbx.bak",
+      "bytes": 2267,
+      "sha256": "d19ad4f96b73190b7b51a3dc77842507d615bc67af11e2c342313fcc8b64c2de"
+    },
+    {
+      "file": "SEO_FA_User_ID_rev1.lbx",
+      "bytes": 1869,
+      "sha256": "22f3210c40072b303f6120cfe46ec1cfdb63da382dd07598953eee5316374271"
+    },
+    {
+      "file": "SEO_FA_User_ID_rev1.lbx.bak",
+      "bytes": 2122,
+      "sha256": "1f8fbeb530d30ef4c04c8e4d49acd9a3a11cf992d5b5533cfad60f00bb0af71e"
+    },
+    {
+      "file": "Task_n_task_detail_SEO.lbx",
+      "bytes": 64134,
+      "sha256": "9760ec8a539aecd7cd891af061c826ba5f457a70e0958a9f5493c7e5adc4f3de"
+    },
+    {
+      "file": "Task_n_task_detail_SEO.lbx.bak",
+      "bytes": 64413,
+      "sha256": "9ef82ad0d1e9a1040cb28640291d50745f912c6ea9fe29122b31a3c2715dc222"
+    },
+    {
+      "file": "Task_n_task_detail_user_SEO.lbx",
+      "bytes": 64156,
+      "sha256": "a95936afac0401a2ad979265353e4cd3ebf4855beab82f355656aaf493abb202"
+    },
+    {
+      "file": "Task_n_task_detail_user_SEO.lbx.bak",
+      "bytes": 64435,
+      "sha256": "6e3245ab96c8d9118beab699d08f2597d2e1c884040b197e3c974480d9a982d7"
+    },
+    {
+      "file": "Task_n_task_detail_user_SEO_rev1.lbx",
+      "bytes": 64205,
+      "sha256": "2bd149f2fe0afd5fdced34109de3007834c72b25470fc93880c5be0e0c091bdd"
+    },
+    {
+      "file": "Task_n_task_detail_user_SEO_rev1.lbx.bak",
+      "bytes": 64484,
+      "sha256": "07491d29ae2edc1ab35341bbd75691e17e28afad88e3026cf0daa931a574c665"
+    },
+    {
+      "file": "User Dept Phone.lbx",
+      "bytes": 1670,
+      "sha256": "d440233a93ca70639c08253c6b05e192d16c235cce35467dbd38e00e24c28311"
+    },
+    {
+      "file": "User Dept Phone.lbx.bak",
+      "bytes": 1728,
+      "sha256": "ccf253f4027f4799693baa3b8f679c6906ada89ae7ccf214b30bc2294d44fb83"
+    },
+    {
+      "file": "User Dept.lbx",
+      "bytes": 1887,
+      "sha256": "3bc6dc348047e128b13fab35128062880392c460172091784bcd9b31675dae5c"
+    },
+    {
+      "file": "User Dept.lbx.bak",
+      "bytes": 2138,
+      "sha256": "1a6455dc6c2e3acc37f8ea2e2d57ddd20b61021b2cb5c372c0fed9a70ac2d958"
+    },
+    {
+      "file": "User FA.lbx",
+      "bytes": 2150,
+      "sha256": "5f5bc0c2995209e997902f0b0bf5671b9e5da9bbd2ea36514844df838944d155"
+    },
+    {
+      "file": "User FA1.lbx",
+      "bytes": 2095,
+      "sha256": "9f3fa7fa4948377ee8d41b1923833ba986e01957b79138e3b40737e3996e9130"
+    },
+    {
+      "file": "User FA1.lbx.bak",
+      "bytes": 2343,
+      "sha256": "b86d0371abacc2eee9f8e0645d41fbb7161630bb3e40fdbbfac2d225d799472e"
+    },
+    {
+      "file": "User FA2.lbx",
+      "bytes": 2096,
+      "sha256": "0c7946d8780445ce0873f4d8d5668e95e04c27ea73a2e5e6a3fee710ad42fcf9"
+    },
+    {
+      "file": "User FA2.lbx.bak",
+      "bytes": 2344,
+      "sha256": "bc9a5a8e87b8ad04a11e12b717ba918224196f91e1262aac834e9f94dec9f7a2"
+    },
+    {
+      "file": "User FA3.lbx",
+      "bytes": 2095,
+      "sha256": "75ca9e4e48b4c2d4cf387ba50cf255937c227ce7b2f5ab879c806db6a1385814"
+    },
+    {
+      "file": "User FA3.lbx.bak",
+      "bytes": 2343,
+      "sha256": "9d49428ad4603df55887eef2982df89cf732f2d86b3f0d1d0412295fbea9d366"
+    },
+    {
+      "file": "User FA4 corrected.lbx",
+      "bytes": 2092,
+      "sha256": "1e017557a4445b7ad445b9d61945983fed961f884548b01b9ed0417a501bf340"
+    },
+    {
+      "file": "User FA4 corrected.lbx.bak",
+      "bytes": 2341,
+      "sha256": "73284f934f1d6749aa6cd02abe69d3e1bd62d167e7a9ecb649b23c88b0085624"
+    },
+    {
+      "file": "User FA4.lbx",
+      "bytes": 2094,
+      "sha256": "3841f62281ced690b1ce9e09338fc72cf767f3b3c678aaf30b0bca610b03428f"
+    },
+    {
+      "file": "User FA4.lbx.bak",
+      "bytes": 2343,
+      "sha256": "61853f2de41ad1112e3f5b43abff47280b8e0c95eca46a3b584cd13030d1d317"
+    },
+    {
+      "file": "User FA5.lbx",
+      "bytes": 2094,
+      "sha256": "8379beb654647bfcfef19d04a252ffdaf6254be83e0cde832c8e3a0ee814649b"
+    },
+    {
+      "file": "User FA5.lbx.bak",
+      "bytes": 2342,
+      "sha256": "906103a91bd60fcd0e59adeb9c33fc98c6bb8808173c14be9180289acf0197f0"
+    },
+    {
+      "file": "User FA6.lbx",
+      "bytes": 2098,
+      "sha256": "a806e176e73d7acd278f941dee04e32e534d61f15d2283bf958799c437d294cd"
+    },
+    {
+      "file": "User FA6.lbx.bak",
+      "bytes": 2348,
+      "sha256": "4a427d91f9d58fb586dd5bca6259f45d623ebb86484fb94045e0383ce394276d"
+    }
+  ]
+}
