@@ -20,6 +20,10 @@ function tinyLbx(objects: string): Uint8Array {
   return zipSync({ 'label.xml': new TextEncoder().encode(label) });
 }
 
+function dateTimeLbx(format: number, atPrint: boolean, date = '2019-01-14'): Uint8Array {
+  return tinyLbx(`<text:datetime><pt:objectStyle x="5pt" y="5pt" width="90pt" height="20pt"><pt:expanded objectName="date"/></pt:objectStyle><text:ptFontInfo><text:logFont name="Arial" weight="700" italic="false"/><text:fontExt size="14pt" textColor="#123456"/></text:ptFontInfo><text:dateTimeStyle mode="DATE" format="${format}" horizontalAlignment="LEFT" verticalAlignment="CENTER" fixedFrame="true" aspectNormal="true" charSpace="0" atPrint="${String(atPrint)}" vertical="false" addtion="false" units="DAYS" addPeriod="0"/><text:dateAndTime date="${date}" hour="12" minute="34"/></text:datetime>`);
+}
+
 describe('LBX parser and bindings', () => {
   it('parses the real fixture image, barcode, and nested table contents', async () => {
     const document = await loadFixture();
@@ -79,6 +83,47 @@ describe('LBX parser and bindings', () => {
 });
 
 describe('SVG safety and rendering', () => {
+  it('renders Brother DateTime format 24 from print time and English locale', () => {
+    const document = parseLBX(dateTimeLbx(24, true));
+    expect(document.objects[0]).toMatchObject({
+      kind: 'datetime', name: 'date', atPrint: true, format: '24',
+      fontFamily: 'Arial', fontSize: 14, fontWeight: 700,
+      horizontalAlign: 'LEFT', verticalAlign: 'CENTER', fixedFrame: true,
+    });
+
+    const svg = renderToSvg(document, {
+      printDate: new Date('2026-08-14T12:00:00Z'),
+      locale: 'en-GB',
+      timeZone: 'UTC',
+    });
+    expect(svg).toContain('>Friday, 14 August, 2026<');
+    expect(svg).not.toContain('2019-01-14');
+    expect(svg).toContain('font-family="Arial"');
+    expect(svg).toContain('font-weight="700"');
+    expect(Number(svg.match(/font-size="([0-9.]+)"/)?.[1])).toBeLessThanOrEqual(14);
+    expect(svg).toContain('fill="#123456"');
+
+    const nativeNumeric = renderToSvg(parseLBX(dateTimeLbx(25, true)), {
+      printDate: new Date('2026-08-14T12:00:00Z'), locale: 'de-DE', timeZone: 'UTC',
+    });
+    expect(nativeNumeric).toContain('>14.8.2026<');
+    expect(renderToSvg(parseLBX(dateTimeLbx(24, false)), { locale: 'de-DE' }))
+      .toContain('>Montag, 14. Januar 2019<');
+  });
+
+  it('keeps stored DateTime values when atPrint is false and applies native numeric format IDs', () => {
+    const options = {
+      printDate: new Date('2026-08-14T12:00:00Z'), locale: 'en-GB', timeZone: 'UTC',
+    };
+    const expected = new Map([
+      [7, '2019/01/14'], [11, 'Jan 14, 2019'], [15, '2019-01-14'],
+      [22, '14.01.2019'], [25, '14.1.2019'], [50, '2019.1.14'],
+    ]);
+    for (const [format, value] of expected) {
+      expect(renderToSvg(parseLBX(dateTimeLbx(format, false)), options)).toContain(`>${value}<`);
+    }
+  });
+
   it('escapes XML text and attributes', () => {
     expect(escapeXml(`<tag a="b"> & ' "`)).toBe('&lt;tag a=&quot;b&quot;&gt; &amp; &apos; &quot;');
     const document = parseLBX(tinyLbx('<text:text xmlns:text="http://schemas.brother.info/ptouch/2007/lbx/text"><pt:objectStyle x="1pt" y="1pt" width="80pt" height="20pt"><pt:expanded objectName="unsafe"/></pt:objectStyle><pt:data>a &amp; b &lt;c&gt;</pt:data></text:text>'));

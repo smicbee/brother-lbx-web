@@ -81,6 +81,39 @@ describe('Brother text layout modes through BpacDocument', () => {
     expect(bounds.maxY).toBeLessThanOrEqual(103);
   });
 
+  it('keeps the real Task-TaskDetail bold FIXEDFRAME ink inside its 178pt frame', async () => {
+    const document = openText(
+      { control: 'FIXEDFRAME', clipFrame: false, shrink: true },
+      'Application/Bench Measurement',
+      '102.4pt" height="292pt" orientation="landscape"',
+    );
+    const object = document.GetObject('label');
+    if (!object || object.raw.kind !== 'text') throw new Error('label text object missing');
+    object.raw.bounds = { x: 103.6, y: 32.8, width: 178, height: 16 };
+    object.raw.fontSize = 14;
+    object.raw.fontWeight = 700;
+    object.raw.verticalAlign = 'CENTER';
+    object.raw.runs = object.raw.runs.map((run) => ({
+      ...run,
+      fontFamily: 'Arial',
+      fontSize: 14,
+      fontWeight: 700,
+    }));
+
+    const svg = document.renderToSvg();
+    const scale = Number(svg.match(/data-lbx-layout-scale="([0-9.]+)"/)?.[1]);
+    expect(scale).toBeGreaterThan(0.81);
+    expect(scale).toBeLessThan(0.83);
+
+    const raw = await pngToRawImageData(await renderSvgToPng(svg, { dpi: 360 }));
+    const bounds = darkBounds(raw);
+    // At 360 DPI one point is five pixels. Native b-PAC keeps this bound title
+    // inside x=103.6..281.6pt; the previous regular-font estimate leaked 40px.
+    expect(raw.width).toBe(1460);
+    expect(bounds.minX).toBeGreaterThanOrEqual(518);
+    expect(bounds.maxX).toBeLessThanOrEqual(1408);
+  });
+
   it('wraps LONGTEXTFIXED into several lines and shrinks parsed rich-text runs together', () => {
     const document = openText({ control: 'LONGTEXTFIXED', clipFrame: true, shrink: true }, 'A very long Brother label value', undefined, true);
     const svg = document.renderToSvg();
@@ -159,6 +192,27 @@ describe('Brother text layout modes through BpacDocument', () => {
   it('uses Calibri-compatible advances instead of generic glyph classes', () => {
     expect(estimatedGlyphWidth('W', 10, 'Calibri')).toBeCloseTo(8.9, 6);
     expect(estimatedGlyphWidth('W', 10, 'Calibri')).not.toBeCloseTo(estimatedGlyphWidth('W', 10, 'DejaVu Sans'), 2);
+  });
+
+  it('keeps accented and non-Latin Arial Bold glyphs inside narrow FIXEDFRAME objects', async () => {
+    expect(estimatedGlyphWidth('Ä', 14, 'Arial', 700)).toBeCloseTo(estimatedGlyphWidth('A', 14, 'Arial', 700), 6);
+
+    for (const value of ['Ä', 'Ω', '№']) {
+      const document = openText({ control: 'FIXEDFRAME', clipFrame: false, shrink: true }, value);
+      const object = document.GetObject('label');
+      if (!object || object.raw.kind !== 'text') throw new Error('label text object missing');
+      object.raw.bounds = { x: 5, y: 5, width: 9, height: 20 };
+      object.raw.fontSize = 14;
+      object.raw.fontWeight = 700;
+      object.raw.runs = object.raw.runs.map((run) => ({
+        ...run, value, fontFamily: 'Arial', fontSize: 14, fontWeight: 700,
+      }));
+
+      const raw = await pngToRawImageData(await renderSvgToPng(document.renderToSvg(), { fitWidth: 400 }));
+      const bounds = darkBounds(raw);
+      expect(bounds.minX).toBeGreaterThanOrEqual(20);
+      expect(bounds.maxX).toBeLessThanOrEqual(56);
+    }
   });
 
   it('uses AUTOLEN and AUTOMATIC as horizontal no-wrap modes', () => {

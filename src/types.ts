@@ -101,6 +101,23 @@ export interface LbxDateTimeObject extends LbxObjectBase {
   minute: number;
   mode: string;
   format: string;
+  atPrint: boolean;
+  addition: boolean;
+  units: string;
+  addPeriod: number;
+  fontFamily?: string;
+  fontSize: number;
+  fontWeight: number;
+  italic: boolean;
+  underline: boolean;
+  strikeout: boolean;
+  color: string;
+  horizontalAlign: LbxTextObject['horizontalAlign'];
+  verticalAlign: LbxTextObject['verticalAlign'];
+  fixedFrame: boolean;
+  aspectNormal: boolean;
+  charSpace: number;
+  vertical: boolean;
 }
 
 export interface LbxImageObject extends LbxObjectBase {
@@ -171,6 +188,12 @@ export interface SvgRenderOptions {
   defaultFontSize?: number;
   includeMetadata?: boolean;
   imageResolver?: (resource: LbxResource) => string;
+  /** Print instant used by DateTime objects with atPrint=true. Defaults to now. */
+  printDate?: Date | string | number;
+  /** Windows/Intl-style locale used for localized Brother DateTime formats. */
+  locale?: string | string[];
+  /** IANA time zone used to derive the local print date. Defaults to the host zone. */
+  timeZone?: string;
 }
 
 export interface QlRasterOptions {

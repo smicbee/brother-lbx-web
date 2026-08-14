@@ -98,6 +98,18 @@ will not fabricate those live capabilities from its static registry.
 
 The renderer uses LBX points (`1 pt = 1/72 inch`) in the SVG view box. It supports styled text runs, safe XML escaping, embedded images as data URLs, CODE39 including the declared wide-to-narrow ratio, Brother QR Code Model 2 layouts with Brother-compatible mask scoring, dates, table borders/cell contents, straight-line drawing objects, clipping, and object rotation. Brother's `\D\A` QR payload escape is converted to CRLF before encoding. Emoji are normalized to deterministic monochrome text glyphs before SVG layout and rasterization; common pictographs receive semantic symbol replacements, text-capable Unicode symbols use text presentation, and unsupported color-only emoji fall back visibly to `◇`.
 
+Brother DateTime objects preserve their saved font, alignment, fixed-frame style, `format` ID, `atPrint`, and date-addition attributes. `atPrint=true` uses the current local instant by default; deterministic jobs and tests should pass `renderToSvg(document, { printDate, locale, timeZone })`. Numeric Brother date formats and the locale-specific long-date format are rendered using native b-PAC-compatible ordering. For example, format 24 with `locale: 'en-GB'` renders `Friday, 14 August, 2026`, while German locale renders `Freitag, 14. August 2026`.
+
+```ts
+const svg = renderToSvg(document, {
+  printDate: new Date('2026-08-14T12:00:00Z'),
+  locale: 'en-GB',
+  timeZone: 'UTC',
+});
+```
+
+Date format IDs calibrated against b-PAC 3.4.0.15 are supported for the ranges `7`–`25` and `50`–`53`. Representative values are: `15` → `2019-01-14`, `22` → `14.01.2019`, `24` → locale long date, `25` → `14.1.2019`, and `50` → `2019.1.14`. Unknown date format IDs use the locale long-date fallback, matching observed b-PAC behavior.
+
 For landscape templates, tape width and label length are mapped to the correct SVG axes. When `autoLength=true`, the very large P-touch placeholder length is replaced with the actual recursive object extent plus the trailing margin. Text objects with `control="AUTOLEN"` are remeasured from their current styled text runs, so changing a bound value grows or shrinks continuous-tape SVG, system-print, and raster output instead of retaining the frame width saved in the LBX. The MVP uses SVG font fallbacks; pixel-identical Brother/Windows font metrics are not guaranteed.
 
 ## Node.js PNG and Brother raster output

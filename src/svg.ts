@@ -315,19 +315,139 @@ function renderQrCode(object: LbxBarcodeObject): string {
   return `<path d="${modules.join('')}" fill="#000000"${transform(object.bounds, object.angle)} />`;
 }
 
-function renderDateTime(object: LbxDateTimeObject): string {
+interface CalendarParts {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+}
+
+function pad(value: number, width = 2): string {
+  return String(value).padStart(width, '0');
+}
+
+function storedCalendarParts(object: LbxDateTimeObject): CalendarParts | undefined {
+  const match = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(object.date.trim());
+  if (!match) return undefined;
+  const parts = {
+    year: Number(match[1]), month: Number(match[2]), day: Number(match[3]),
+    hour: object.hour, minute: object.minute,
+  };
+  const check = new Date(Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute));
+  if (check.getUTCFullYear() !== parts.year || check.getUTCMonth() + 1 !== parts.month || check.getUTCDate() !== parts.day) return undefined;
+  return parts;
+}
+
+function printCalendarParts(options: SvgRenderOptions): CalendarParts | undefined {
+  const instant = options.printDate === undefined ? new Date() : new Date(options.printDate);
+  if (!Number.isFinite(instant.getTime())) return undefined;
+  const formatter = new Intl.DateTimeFormat('en-US-u-ca-gregory-nu-latn', {
+    year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric',
+    hourCycle: 'h23', ...(options.timeZone ? { timeZone: options.timeZone } : {}),
+  });
+  const values = Object.fromEntries(formatter.formatToParts(instant).map((part) => [part.type, part.value]));
+  return {
+    year: Number(values.year), month: Number(values.month), day: Number(values.day),
+    hour: Number(values.hour), minute: Number(values.minute),
+  };
+}
+
+function applyDateAddition(parts: CalendarParts, object: LbxDateTimeObject): CalendarParts {
+  if (!object.addition || !object.addPeriod) return parts;
+  const date = new Date(Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute));
+  switch (object.units.toUpperCase()) {
+    case 'YEARS': date.setUTCFullYear(date.getUTCFullYear() + object.addPeriod); break;
+    case 'MONTHS': date.setUTCMonth(date.getUTCMonth() + object.addPeriod); break;
+    case 'HOURS': date.setUTCHours(date.getUTCHours() + object.addPeriod); break;
+    case 'MINUTES': date.setUTCMinutes(date.getUTCMinutes() + object.addPeriod); break;
+    default: date.setUTCDate(date.getUTCDate() + object.addPeriod); break;
+  }
+  return {
+    year: date.getUTCFullYear(), month: date.getUTCMonth() + 1, day: date.getUTCDate(),
+    hour: date.getUTCHours(), minute: date.getUTCMinutes(),
+  };
+}
+
+function localizedPart(parts: CalendarParts, locale: SvgRenderOptions['locale'], key: 'weekday' | 'month', width: 'long' | 'short'): string {
+  const date = new Date(Date.UTC(parts.year, parts.month - 1, parts.day, 12));
+  return new Intl.DateTimeFormat(locale, { [key]: width, timeZone: 'UTC' }).format(date);
+}
+
+function longDate(parts: CalendarParts, locale: SvgRenderOptions['locale']): string {
+  const resolved = new Intl.DateTimeFormat(locale).resolvedOptions().locale.toLowerCase();
+  const weekday = localizedPart(parts, locale, 'weekday', 'long');
+  const month = localizedPart(parts, locale, 'month', 'long');
+  if (resolved.startsWith('de')) return `${weekday}, ${parts.day}. ${month} ${parts.year}`;
+  if (resolved.startsWith('en')) return `${weekday}, ${parts.day} ${month}, ${parts.year}`;
+  const date = new Date(Date.UTC(parts.year, parts.month - 1, parts.day, 12));
+  return new Intl.DateTimeFormat(locale, {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC',
+  }).format(date);
+}
+
+function formatBrotherDate(parts: CalendarParts, format: string, locale: SvgRenderOptions['locale']): string {
+  const yyyy = pad(parts.year, 4);
+  const yy = pad(parts.year % 100);
+  const mm = pad(parts.month);
+  const dd = pad(parts.day);
+  const monthShort = localizedPart(parts, locale, 'month', 'short');
+  const monthLong = localizedPart(parts, locale, 'month', 'long');
+  switch (Number.parseInt(format, 10)) {
+    case 7: return `${yyyy}/${mm}/${dd}`;
+    case 8: return `${yy}/${mm}/${dd}`;
+    case 9: return `${parts.month}/${parts.day}/${yy}`;
+    case 10: return `${mm}/${dd}/${yy}`;
+    case 11: return `${monthShort} ${parts.day}, ${yyyy}`;
+    case 12: return `${monthLong} ${parts.day}, ${yyyy}`;
+    case 13: return `${parts.day} ${monthLong} '${yy}`;
+    case 14: return `${parts.day} ${monthShort} '${yy}`;
+    case 15: return `${yyyy}-${mm}-${dd}`;
+    case 16: return `${yy}-${mm}-${dd}`;
+    case 17: return `${parts.month}/${parts.day}/${yyyy}`;
+    case 18: return `${dd}/${mm}/${yyyy}`;
+    case 19: return `${dd}/${mm}/${yy}`;
+    case 20: return `${dd}-${mm}-${yyyy}`;
+    case 21: return `${dd}-${mm}-${yy}`;
+    case 22: return `${dd}.${mm}.${yyyy}`;
+    case 23: return `${dd}.${mm}.${yy}`;
+    case 25: return `${parts.day}.${parts.month}.${yyyy}`;
+    case 50: return `${yyyy}.${parts.month}.${parts.day}`;
+    case 51: return `${yy}.${parts.month}.${parts.day}`;
+    case 52: return `${yyyy}.${parts.month}`;
+    case 53: return `${yy}.${parts.month}`;
+    case 24:
+    default: return longDate(parts, locale);
+  }
+}
+
+/** Format an LBX DateTime object with the native b-PAC date/atPrint semantics. */
+export function formatBrotherDateTime(object: LbxDateTimeObject, options: SvgRenderOptions = {}): string {
+  const source = object.atPrint ? printCalendarParts(options) : storedCalendarParts(object);
+  if (!source) return object.value;
+  const parts = applyDateAddition(source, object);
+  const mode = object.mode.toUpperCase();
+  const time = `${pad(parts.hour)}:${pad(parts.minute)}`;
+  if (mode === 'TIME') return time;
+  const date = formatBrotherDate(parts, object.format, options.locale);
+  return mode.includes('TIME') ? `${date} ${time}` : date;
+}
+
+function renderDateTime(object: LbxDateTimeObject, options: SvgRenderOptions): string {
+  const value = formatBrotherDateTime(object, options);
   const run: LbxTextRun = {
-    value: object.value, fontSize: 9, fontWeight: 400, italic: false,
-    underline: false, strikeout: false, color: '#000000',
+    value, fontFamily: object.fontFamily, fontSize: object.fontSize,
+    fontWeight: object.fontWeight, italic: object.italic, underline: object.underline,
+    strikeout: object.strikeout, color: object.color,
   };
   const text: LbxTextObject = {
-    ...object, kind: 'text', value: object.value, fontSize: 9, fontWeight: 400,
-    italic: false, underline: false, strikeout: false, color: '#000000',
-    horizontalAlign: 'RIGHT', verticalAlign: 'CENTER', control: 'FREE',
-    clipFrame: false, shrink: false, autoLineFeed: false, charSpace: 0,
-    lineSpace: 0, vertical: false, runs: [run],
+    ...object, kind: 'text', value, runs: [run],
+    horizontalAlign: object.horizontalAlign, verticalAlign: object.verticalAlign,
+    control: object.fixedFrame ? 'FIXEDFRAME' : 'FREE', clipFrame: false,
+    shrink: object.fixedFrame, autoLineFeed: false, charSpace: object.charSpace,
+    lineSpace: 0, vertical: object.vertical,
   };
-  return renderText(text, {});
+  return renderText(text, options);
 }
 
 function renderPoly(object: LbxPolyObject): string {
@@ -348,7 +468,7 @@ function renderOne(object: LbxObject, options: SvgRenderOptions): string {
     case 'text': return renderText(object, options);
     case 'image': return object.resource ? `<image ${rectAttrs(object.bounds)} href="${imageHref(object.resource, options)}" preserveAspectRatio="none"${transform(object.bounds, object.angle)} />` : `<!-- missing image resource ${escapeXml(object.resourceName)} -->`;
     case 'barcode': return renderBarcode(object);
-    case 'datetime': return renderDateTime(object);
+    case 'datetime': return renderDateTime(object, options);
     case 'poly': return renderPoly(object);
     case 'table': return renderTable(object, options, (child) => renderOne(child, options));
     case 'unknown': return `<!-- unsupported LBX XML object ${escapeXml(object.tag)} at ${escapeXml(object.path)} -->${object.children.map((child) => renderOne(child, options)).join('')}`;

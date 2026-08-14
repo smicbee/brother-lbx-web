@@ -41,6 +41,18 @@ const ARIAL_ASCII_ADVANCES = [
   556, 556, 333, 500, 278, 556, 500, 722, 500, 500, 500, 334, 260, 334, 584,
 ] as const;
 
+// Arial Bold/Liberation Sans Bold has materially different advances from the
+// regular face. Applying a small synthetic weight multiplier to regular Arial
+// under-measures real bold labels and can let FIXEDFRAME ink escape its frame.
+const ARIAL_BOLD_ASCII_ADVANCES = [
+  278, 333, 474, 556, 556, 889, 722, 238, 333, 333, 389, 584, 278, 333, 278, 278,
+  556, 556, 556, 556, 556, 556, 556, 556, 556, 556, 333, 333, 584, 584, 584, 611,
+  975, 722, 722, 722, 722, 667, 611, 778, 722, 278, 556, 722, 611, 833, 722, 778,
+  667, 778, 722, 667, 611, 722, 667, 944, 667, 667, 611, 333, 278, 333, 584, 556,
+  333, 556, 611, 556, 611, 556, 333, 611, 611, 278, 278, 556, 278, 889, 611, 611,
+  611, 611, 389, 556, 333, 611, 556, 778, 556, 556, 500, 389, 280, 389, 584,
+] as const;
+
 // Carlito is metrically compatible with Calibri and is used by the Node
 // renderer when Calibri itself is unavailable.
 const CALIBRI_ASCII_ADVANCES = [
@@ -77,19 +89,33 @@ export function graphemes(value: string): string[] {
   return result;
 }
 
+function asciiMetricCodePoint(character: string): number | undefined {
+  const normalized = character.normalize('NFD');
+  const parts = [...normalized];
+  const codePoint = parts[0]?.codePointAt(0);
+  if (codePoint === undefined || codePoint < 0x20 || codePoint > 0x7e) return undefined;
+  return parts.slice(1).every((part) => /^\p{Mark}$/u.test(part)) ? codePoint : undefined;
+}
+
 /** Deterministic fallback metric shared by wrapping, sizing, and SVG layout. */
-export function estimatedGlyphWidth(character: string, fontSize: number, fontFamily = 'Arial'): number {
+export function estimatedGlyphWidth(character: string, fontSize: number, fontFamily = 'Arial', fontWeight = 400): number {
   if (/^[\u200D\uFE0E\uFE0F]$/u.test(character) || /^\p{Mark}$/u.test(character)) return 0;
   // Arial-compatible advances in 1/1000 em. Liberation Sans deliberately
   // uses the same metrics, so this table keeps wrapping deterministic in
   // Node while matching b-PAC/GDI far more closely than broad glyph classes.
-  const codePoint = character.codePointAt(0) ?? -1;
-  const asciiAdvances = /^(?:Arial|Liberation Sans)$/i.test(fontFamily)
-    ? ARIAL_ASCII_ADVANCES
+  // Canonically decomposable Latin letters reuse their ASCII base advance.
+  const codePoint = asciiMetricCodePoint(character) ?? character.codePointAt(0) ?? -1;
+  const arialCompatible = /^(?:Arial|Liberation Sans)$/i.test(fontFamily);
+  const asciiAdvances = arialCompatible
+    ? (fontWeight >= 600 ? ARIAL_BOLD_ASCII_ADVANCES : ARIAL_ASCII_ADVANCES)
     : /^(?:Calibri|Carlito)$/i.test(fontFamily)
       ? CALIBRI_ASCII_ADVANCES
       : undefined;
   if (asciiAdvances && codePoint >= 0x20 && codePoint <= 0x7e) return fontSize * (asciiAdvances[codePoint - 0x20] ?? 600) / 1000;
+  // Browser SVG engines can resolve a broad Unicode fallback behind the
+  // Arial alias. Unknown bold glyphs vary from roughly 0.8em (Greek) to more
+  // than 1.1em (numero sign), so a narrow generic 0.6em estimate is unsafe.
+  if (arialCompatible && fontWeight >= 600) return fontSize * 1.2;
   if (/\s/u.test(character)) return fontSize * 0.278;
   if (/[\u2190-\u27BF]/u.test(character)) return fontSize * 0.9;
   if (/[il1|.,'`:;]/u.test(character)) return fontSize * 0.28;
@@ -114,8 +140,15 @@ function runWidth(glyphs: Glyph[], fontScale = 1): number {
   let width = 0;
   for (const glyph of glyphs) {
     const fontSize = Math.max(0.01, glyph.run.fontSize || 10) * Math.max(0.01, fontScale);
-    let advance = estimatedGlyphWidth(glyph.value, fontSize, glyph.run.fontFamily);
-    if (glyph.run.fontWeight >= 600) advance *= 1.03;
+    let advance = estimatedGlyphWidth(glyph.value, fontSize, glyph.run.fontFamily, glyph.run.fontWeight);
+    // Known Arial-compatible ASCII/Latin-diacritic glyphs select a real
+    // bold table. Other Unicode glyphs still need a conservative weight
+    // fallback or their raster ink can escape narrow FIXEDFRAME objects.
+    if (glyph.run.fontWeight >= 600) {
+      const arialCompatible = /^(?:Arial|Liberation Sans)$/i.test(glyph.run.fontFamily ?? 'Arial');
+      const hasMeasuredBoldAdvance = arialCompatible && asciiMetricCodePoint(glyph.value) !== undefined;
+      if (!hasMeasuredBoldAdvance && !arialCompatible) advance *= 1.03;
+    }
     if (glyph.run.italic) advance *= 1.02;
     width += advance;
   }

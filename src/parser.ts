@@ -337,6 +337,7 @@ function parseBarcode(element: XmlElement, path: string): LbxBarcodeObject {
 
 function parseDateTime(element: XmlElement, path: string): LbxDateTimeObject {
   const style = firstChild(element, 'dateTimeStyle');
+  const font = parseTextRunStyle(firstChild(element, 'ptFontInfo'));
   const dateAndTime = firstChild(element, 'dateAndTime');
   const date = dateAndTime?.getAttribute('date') || '';
   const hour = Number.parseInt(dateAndTime?.getAttribute('hour') || '0', 10) || 0;
@@ -350,6 +351,17 @@ function parseDateTime(element: XmlElement, path: string): LbxDateTimeObject {
     minute,
     mode: style?.getAttribute('mode') || 'DATE',
     format: style?.getAttribute('format') || '',
+    atPrint: booleanAttr(style, 'atPrint'),
+    addition: booleanAttr(style, 'addtion') || booleanAttr(style, 'addition'),
+    units: style?.getAttribute('units') || 'DAYS',
+    addPeriod: Math.trunc(numberAttr(style, 'addPeriod')),
+    ...font,
+    horizontalAlign: (style?.getAttribute('horizontalAlignment') || 'RIGHT') as LbxDateTimeObject['horizontalAlign'],
+    verticalAlign: (style?.getAttribute('verticalAlignment') || 'CENTER') as LbxDateTimeObject['verticalAlign'],
+    fixedFrame: booleanAttr(style, 'fixedFrame'),
+    aspectNormal: booleanAttr(style, 'aspectNormal', true),
+    charSpace: numberAttr(style, 'charSpace'),
+    vertical: booleanAttr(style, 'vertical'),
   };
 }
 
