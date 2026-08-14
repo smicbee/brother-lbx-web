@@ -371,6 +371,8 @@ function findResource(resources: Record<string, LbxResource>, name: string): Lbx
 
 function parseImage(element: XmlElement, path: string, resources: Record<string, LbxResource>): LbxImageObject {
   const style = firstChild(element, 'imageStyle');
+  const effect = firstChild(style, 'effect');
+  const mono = firstChild(style, 'mono');
   const resourceName = style?.getAttribute('fileName') || style?.getAttribute('originalName') || '';
   return {
     ...baseObject(element, path),
@@ -378,6 +380,23 @@ function parseImage(element: XmlElement, path: string, resources: Record<string,
     resourceName,
     resource: findResource(resources, resourceName),
     originalName: style?.getAttribute('originalName') || undefined,
+    effect: effect ? {
+      kind: effect.getAttribute('effect') || 'NONE',
+      brightness: numberAttr(effect, 'brightness', 50),
+      contrast: numberAttr(effect, 'contrast', 50),
+    } : undefined,
+    mono: mono ? {
+      operationKind: mono.getAttribute('operationKind') || '',
+      reverse: booleanAttr(mono, 'reverse'),
+      ditherKind: mono.getAttribute('ditherKind') || '',
+      threshold: numberAttr(mono, 'threshold', 128),
+      gamma: numberAttr(mono, 'gamma', 100),
+      ditherEdge: numberAttr(mono, 'ditherEdge'),
+      red: numberAttr(mono, 'rgbconvProportionRed', 30),
+      green: numberAttr(mono, 'rgbconvProportionGreen', 59),
+      blue: numberAttr(mono, 'rgbconvProportionBlue', 11),
+      proportionsReversed: booleanAttr(mono, 'rgbconvProportionReversed'),
+    } : undefined,
   };
 }
 

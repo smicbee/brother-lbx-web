@@ -134,9 +134,29 @@ function renderText(object: LbxTextObject, options: SvgRenderOptions): string {
   return `${definition}${frameRect}<text data-lbx-effective-width="${fmt(layout.bounds.width)}" data-lbx-effective-height="${fmt(layout.bounds.height)}" data-lbx-layout-scale="${fmt(layout.scale)}" data-lbx-line-count="${layout.lines.length}" x="${fmt(x)}" y="${fmt(baseline)}" text-anchor="${anchor}"${spacing}${clipping}${transform(layout.bounds, object.angle)}>${text}</text>`;
 }
 
-function renderImage(object: LbxImageObject): string {
+function renderImage(object: LbxImageObject, options: SvgRenderOptions): string {
   if (!object.resource) return `<!-- missing image resource ${escapeXml(object.resourceName)} -->`;
-  return `<image ${rectAttrs(object.bounds)} href="${imageHref(object.resource, {})}" preserveAspectRatio="none"${transform(object.bounds, object.angle)} />`;
+  const mono = object.mono;
+  const effect = object.effect;
+  const monoAttributes = mono ? ` data-lbx-mono-operation="${escapeXml(mono.operationKind)}" data-lbx-mono-dither="${escapeXml(mono.ditherKind)}" data-lbx-mono-threshold="${fmt(mono.threshold)}" data-lbx-mono-gamma="${fmt(mono.gamma)}" data-lbx-mono-edge="${fmt(mono.ditherEdge)}" data-lbx-mono-red="${fmt(mono.red)}" data-lbx-mono-green="${fmt(mono.green)}" data-lbx-mono-blue="${fmt(mono.blue)}" data-lbx-mono-reverse="${mono.reverse ? '1' : '0'}" data-lbx-mono-proportions-reversed="${mono.proportionsReversed ? '1' : '0'}"` : '';
+  const effectAttributes = effect ? ` data-lbx-image-effect="${escapeXml(effect.kind)}" data-lbx-image-brightness="${fmt(effect.brightness)}" data-lbx-image-contrast="${fmt(effect.contrast)}"` : '';
+  let filterDefinition = '';
+  let filter = '';
+  if (mono?.operationKind.toUpperCase() === 'BINARY' && !mono.proportionsReversed) {
+    let hash = 2166136261;
+    for (const character of object.path) {
+      hash ^= character.codePointAt(0) ?? 0;
+      hash = Math.imul(hash, 16777619);
+    }
+    const id = `lbx-image-mono-${(hash >>> 0).toString(16)}`;
+    const total = Math.max(1, mono.red + mono.green + mono.blue);
+    const red = fmt(mono.red / total);
+    const green = fmt(mono.green / total);
+    const blue = fmt(mono.blue / total);
+    filterDefinition = `<defs><filter id="${id}" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" values="${red} ${green} ${blue} 0 0 ${red} ${green} ${blue} 0 0 ${red} ${green} ${blue} 0 0 0 0 0 1 0" /></filter></defs>`;
+    filter = ` filter="url(#${id})"`;
+  }
+  return `${filterDefinition}<image ${rectAttrs(object.bounds)} href="${imageHref(object.resource, options)}" preserveAspectRatio="none"${monoAttributes}${effectAttributes}${filter}${transform(object.bounds, object.angle)} />`;
 }
 
 interface Code39Element { bar: boolean; width: number }
@@ -466,7 +486,7 @@ function renderTable(object: LbxTableObject, options: SvgRenderOptions, renderOb
 function renderOne(object: LbxObject, options: SvgRenderOptions): string {
   switch (object.kind) {
     case 'text': return renderText(object, options);
-    case 'image': return object.resource ? `<image ${rectAttrs(object.bounds)} href="${imageHref(object.resource, options)}" preserveAspectRatio="none"${transform(object.bounds, object.angle)} />` : `<!-- missing image resource ${escapeXml(object.resourceName)} -->`;
+    case 'image': return renderImage(object, options);
     case 'barcode': return renderBarcode(object);
     case 'datetime': return renderDateTime(object, options);
     case 'poly': return renderPoly(object);

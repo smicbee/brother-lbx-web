@@ -90,6 +90,7 @@ will not fabricate those live capabilities from its static registry.
 - Preserves `pt:expanded/@objectName` as `name`. `setObject` and `setObjects` replace named text, barcode, and date values.
 - Preserves Brother rich-text run font size, weight, italics, underline, strikeout, color, fixed-frame controls, clipping, alignment, and line spacing.
 - Stores embedded JPEG, PNG, and BMP resources as `Uint8Array` values with detected MIME types.
+- Preserves Brother image monochrome-conversion (`operationKind`, dither, threshold, gamma, RGB proportions) and brightness/contrast metadata.
 - Preserves unknown direct or nested objects as `unknown` nodes with `rawXml`, XML tag/path diagnostics, and any recognized descendants.
 - Validates the ZIP central directory before extraction: no absolute or `..` paths, encryption, ZIP64, or multi-disk archives; entry count and compressed, per-entry, XML, and expanded sizes are bounded.
 - Applies XML node-count and nesting-depth limits before constructing the DOM.
@@ -114,7 +115,7 @@ For landscape templates, tape width and label length are mapped to the correct S
 
 ## Node.js PNG and Brother raster output
 
-`brother-lbx-web/node` uses `@resvg/resvg-js` for PNG rendering and `sharp` for RGBA conversion. Embedded 24-bit and 32-bit BMP resources are normalized through `bmp-js`; unused zero-alpha padding is treated as opaque. SVG output, embedded raster images, decoded PNGs, and raw RGBA data are protected by pixel limits.
+`brother-lbx-web/node` uses `@resvg/resvg-js` for PNG rendering and `sharp` for RGBA conversion. Embedded 24-bit and 32-bit BMP resources are normalized through `bmp-js`; unused zero-alpha padding is treated as opaque. Brother `BINARY`/`MESH` color images with the observed normal RGB-proportion mode are converted with deterministic page-anchored ordered dithering before Node rasterization; already-grayscale Brother resources retain their stored screening, while uncalibrated reversed-proportion or rotated variants keep the safe SVG fallback. SVG output also applies the saved RGB luminance proportions so browser previews are monochrome rather than color. SVG output, embedded raster images, decoded PNGs, and raw RGBA data are protected by pixel limits.
 
 Raster generation uses `@thermal-label/brother-ql-core@0.6.1`. The current public API deliberately supports only `QL-820NWB`/`QL-820NWBc` with standard-width DK media. Unknown IDs, wide-DK-only media, TZe/HSe media, incompatible printer names, and invalid copy counts are rejected instead of silently falling back.
 

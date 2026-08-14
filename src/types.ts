@@ -125,6 +125,23 @@ export interface LbxImageObject extends LbxObjectBase {
   resourceName: string;
   resource?: LbxResource;
   originalName?: string;
+  effect?: {
+    kind: string;
+    brightness: number;
+    contrast: number;
+  };
+  mono?: {
+    operationKind: string;
+    reverse: boolean;
+    ditherKind: string;
+    threshold: number;
+    gamma: number;
+    ditherEdge: number;
+    red: number;
+    green: number;
+    blue: number;
+    proportionsReversed: boolean;
+  };
 }
 
 export interface LbxPolyObject extends LbxObjectBase {
