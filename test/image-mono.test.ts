@@ -110,6 +110,24 @@ describe('Brother monochrome image styles', () => {
     expect(chromaticPixels).toBeGreaterThan(0);
   });
 
+  it('preserves rotated images without applying an uncalibrated page screen', async () => {
+    const document = await load('SEO_FA_LAB_rev1.lbx');
+    const object = image(document);
+    object.angle = 17;
+    const svg = renderToSvg(document);
+    expect(svg).toContain('transform="rotate(17');
+    expect(svg).not.toContain('<feColorMatrix type="matrix"');
+    const raw = await pngToRawImageData(await renderSvgToPng(svg, { dpi: 360 }));
+    let chromaticPixels = 0;
+    for (let offset = 0; offset < raw.data.length; offset += 4) {
+      const red = raw.data[offset] ?? 255;
+      const green = raw.data[offset + 1] ?? 255;
+      const blue = raw.data[offset + 2] ?? 255;
+      if (red !== green || green !== blue) chromaticPixels += 1;
+    }
+    expect(chromaticPixels).toBeGreaterThan(0);
+  });
+
   it('composites transparent source pixels onto paper white before screening', async () => {
     const sharp = (await import('sharp')).default;
     const source = await sharp(Buffer.from([

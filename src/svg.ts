@@ -142,7 +142,7 @@ function renderImage(object: LbxImageObject, options: SvgRenderOptions): string 
   const effectAttributes = effect ? ` data-lbx-image-effect="${escapeXml(effect.kind)}" data-lbx-image-brightness="${fmt(effect.brightness)}" data-lbx-image-contrast="${fmt(effect.contrast)}"` : '';
   let filterDefinition = '';
   let filter = '';
-  if (mono?.operationKind.toUpperCase() === 'BINARY' && !mono.proportionsReversed) {
+  if (mono?.operationKind.toUpperCase() === 'BINARY' && !mono.proportionsReversed && object.angle === 0) {
     let hash = 2166136261;
     for (const character of object.path) {
       hash ^= character.codePointAt(0) ?? 0;
