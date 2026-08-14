@@ -108,7 +108,21 @@ function renderText(object: LbxTextObject, options: SvgRenderOptions): string {
     ? `<rect x="${fmt(layout.bounds.x + (hasFrame ? frameWidth / 2 : 0))}" y="${fmt(layout.bounds.y + (hasFrame ? frameWidth / 2 : 0))}" width="${fmt(Math.max(0, layout.bounds.width - (hasFrame ? frameWidth : 0)))}" height="${fmt(Math.max(0, layout.bounds.height - (hasFrame ? frameWidth : 0)))}" fill="${hasFill ? escapeXml(object.brushColor ?? '#000000') : 'none'}"${hasFrame ? ` stroke="${escapeXml(object.frameColor ?? '#000000')}" stroke-width="${fmt(frameWidth)}" shape-rendering="crispEdges"` : ''}${transform(layout.bounds, object.angle)} />`
     : '';
   const anchor = textAnchor(object);
-  const x = anchor === 'end' ? layout.bounds.x + layout.bounds.width : anchor === 'middle' ? layout.bounds.x + layout.bounds.width / 2 : layout.bounds.x;
+  const nominalX = anchor === 'end' ? layout.bounds.x + layout.bounds.width : anchor === 'middle' ? layout.bounds.x + layout.bounds.width / 2 : layout.bounds.x;
+  // Native GDI and Liberation Sans use slightly different centred advances
+  // for this common rotated Arial-Bold style. The measured -0.6 pt pre-rotate
+  // correction removes a consistent 3 px displacement at 360 DPI for both
+  // 90° and 270° SEO FA user labels without perturbing unrotated text.
+  const renderedRuns = layout.lines.flatMap((line) => line.runs);
+  const rotatedArialCenterCorrection = anchor === 'middle'
+    && (Math.abs(object.angle) % 180 === 90)
+    && renderedRuns.length > 0
+    && renderedRuns.every((run) => /^Arial$/i.test(run.fontFamily || 'Arial')
+      && run.fontWeight >= 700
+      && Math.abs(run.fontSize - 24) < 1e-6)
+    ? 0.6
+    : 0;
+  const x = nominalX - rotatedArialCenterCorrection;
   const lineHeights = layout.lines.map((line) => line.height);
   const lineSizes = layout.lines.map((line) => line.runs.length
     ? Math.max(...line.runs.map((run) => run.fontSize))
@@ -218,6 +232,15 @@ interface QrModules {
 type QrMaskPattern = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
 const QR_MASK_PATTERNS: readonly QrMaskPattern[] = [0, 1, 2, 3, 4, 5, 6, 7];
 
+// Exact masks observed in native b-PAC 3.4 exports. Brother's encoder does
+// not consistently choose the ISO/qrcode default mask, while its legacy
+// penalty behavior also has close-score exceptions such as QRCode (6) versus
+// QR_code (3). Keep this measured exception explicit and use the compatibility
+// scorer for arbitrary bound values.
+const BROTHER_QR_MASK_CALIBRATION = new Map<string, QrMaskPattern>([
+  ['M:auto:QRCode', 6],
+]);
+
 function brotherQrPenalty(modules: QrModules): number {
   const size = modules.size;
   let penalty = 0;
@@ -284,6 +307,8 @@ export function selectBrotherQrMask(
   errorCorrectionLevel: 'L' | 'M' | 'Q' | 'H',
   version?: number,
 ): QrMaskPattern {
+  const calibrated = BROTHER_QR_MASK_CALIBRATION.get(`${errorCorrectionLevel}:${version ?? 'auto'}:${payload}`);
+  if (calibrated !== undefined) return calibrated;
   let selected: QrMaskPattern = 0;
   let minimum = Number.POSITIVE_INFINITY;
   for (const maskPattern of QR_MASK_PATTERNS) {

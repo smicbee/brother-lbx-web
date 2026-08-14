@@ -10,6 +10,7 @@ import { renderSvgToPng, pngToQlRasterJob, pngToRawImageData } from '../src/node
 const fixture = resolve('test/fixtures/template.lbx');
 const internetTextFixture = resolve('test/fixtures/internet/default-text-only-12mm.lbx');
 const internetImageFixture = resolve('test/fixtures/internet/single_image.lbx');
+const seoFaUserFixture = resolve('test/fixtures/seo-fa-lab-rev1/1_SEO_FA_User_ID.lbx');
 
 async function loadFixture() {
   return parseLBX(new Uint8Array(await readFile(fixture)));
@@ -155,6 +156,20 @@ describe('SVG safety and rendering', () => {
     expect(selectBrotherQrMask('QR_code', 'M')).toBe(3);
     expect(selectBrotherQrMask('VQ1702A4.13', 'M')).toBe(3);
     expect(selectBrotherQrMask('CLOSE_TASK', 'M')).toBe(7);
+    expect(selectBrotherQrMask('QRCode', 'M')).toBe(6);
+  });
+
+  it('keeps the unbreakable rotated SEO FA user name on one line', async () => {
+    const document = parseLBX(new Uint8Array(await readFile(seoFaUserFixture)));
+    const svg = renderToSvg(document);
+    expect(svg).toContain('data-lbx-line-count="1"');
+    expect(svg).toMatch(/<tspan[^>]*>User<\/tspan>/);
+    expect(svg).toMatch(/<text[^>]* x="72\.3"[^>]*rotate\(90 72\.9 35\)/);
+
+    expect(setObject(document, 'user_name', 'User ')).toBe(true);
+    const trailingSpaceSvg = renderToSvg(document);
+    expect(trailingSpaceSvg).toContain('data-lbx-line-count="1"');
+    expect(trailingSpaceSvg).toContain('data-lbx-layout-scale="1"');
   });
 
   it('keeps empty and oversized fixed-version QR placeholders renderable', () => {

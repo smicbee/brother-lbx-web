@@ -205,7 +205,7 @@ function splitExplicitLines(object: LbxTextObject): LbxTextRun[][] {
   return lines;
 }
 
-function wrapLine(line: LbxTextRun[], width: number, charSpace: number, fontScale = 1): LbxTextRun[][] {
+function wrapLine(line: LbxTextRun[], width: number, charSpace: number, fontScale = 1, breakWords = true): LbxTextRun[][] {
   if (!(width > 0) || !line.length) return [line];
   const glyphs = lineGlyphs(line);
   const output: Glyph[][] = [];
@@ -227,13 +227,15 @@ function wrapLine(line: LbxTextRun[], width: number, charSpace: number, fontScal
         if (current.length) output.push(current);
         current = remainder.filter((item) => !/^\s$/u.test(item.value));
         lastBreak = -1;
-      } else {
+      } else if (breakWords) {
         flush();
       }
-      if (current.length) {
+      if (breakWords && current.length) {
         const retry = runWidth([...current, glyph], fontScale) + Math.max(0, current.length) * charSpace * fontScale;
         if (retry > width) flush();
       }
+      // Brother wraps an unclipped LONGTEXTFIXED object only at a real
+      // separator. Other controls retain deterministic hard wrapping.
     }
     // A separator that caused wrapping belongs to neither visual line. Keep
     // intentional leading whitespace on the first line, but never create a
@@ -286,15 +288,24 @@ export function layoutText(object: LbxTextObject): TextLayoutResult {
   const mode = modeOf(object);
   const wrapping = mode === 'LONGTEXTFIXED' || mode === 'LONGTEXT' || (mode === 'FIXEDFRAME' && object.autoLineFeed);
   const explicit = splitExplicitLines(object);
+  const breakWords = !(mode === 'LONGTEXTFIXED' && !object.clipFrame);
   const wrapAtScale = (candidateScale: number) => wrapping
-    ? explicit.flatMap((line) => wrapLine(line, originalBounds.width, object.charSpace, candidateScale))
+    ? explicit.flatMap((line) => wrapLine(line, originalBounds.width, object.charSpace, candidateScale, breakWords))
     : explicit;
   let wrapped = wrapAtScale(1);
   let scale = 1;
   let lines = scaledLines(wrapped, scale, object);
   let size = contentSize(lines);
   const fixed = mode === 'FIXEDFRAME' || mode === 'LONGTEXTFIXED';
-  const allowShrink = object.shrink;
+  const singleLineGlyphs = explicit.length === 1 ? lineGlyphs(explicit[0] ?? []) : [];
+  const firstVisibleGlyph = singleLineGlyphs.findIndex((glyph) => !/\s/u.test(glyph.value));
+  let lastVisibleGlyph = singleLineGlyphs.length - 1;
+  while (lastVisibleGlyph >= 0 && /\s/u.test(singleLineGlyphs[lastVisibleGlyph]?.value ?? '')) lastVisibleGlyph -= 1;
+  const visibleToken = firstVisibleGlyph >= 0 ? singleLineGlyphs.slice(firstVisibleGlyph, lastVisibleGlyph + 1) : [];
+  const unbreakableSingleLine = explicit.length === 1 && visibleToken.length > 0
+    && !visibleToken.some((glyph) => /\s/u.test(glyph.value) || glyph.value === '-');
+  const preserveUnclippedToken = mode === 'LONGTEXTFIXED' && !object.clipFrame && unbreakableSingleLine;
+  const allowShrink = object.shrink && (!preserveUnclippedToken || size.height > originalBounds.height + 1e-6);
   if (fixed && allowShrink && (size.width > originalBounds.width || size.height > originalBounds.height)) {
     if (wrapping) {
       // Wrapping and font size influence each other. Find the largest scale
