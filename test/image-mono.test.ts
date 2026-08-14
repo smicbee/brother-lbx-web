@@ -131,7 +131,7 @@ describe('Brother monochrome image styles', () => {
   it('composites transparent source pixels onto paper white before screening', async () => {
     const sharp = (await import('sharp')).default;
     const source = await sharp(Buffer.from([
-      0, 0, 0, 0,
+      255, 0, 0, 0,
       0, 0, 0, 255,
     ]), { raw: { width: 2, height: 1, channels: 4 } }).png().toBuffer();
     const href = `data:image/png;base64,${source.toString('base64')}`;
@@ -141,5 +141,23 @@ describe('Brother monochrome image styles', () => {
       255, 255, 255, 255,
       0, 0, 0, 255,
     ]);
+  });
+
+  it('rejects excessive aggregate monochrome normalization work before decoding', async () => {
+    const sharp = (await import('sharp')).default;
+    const source = await sharp(Buffer.from([255, 0, 0]), { raw: { width: 1, height: 1, channels: 3 } }).png().toBuffer();
+    const href = `data:image/png;base64,${source.toString('base64')}`;
+    const imageTag = `<image x="0" y="0" width="5000" height="5000" href="${href}" data-lbx-mono-operation="BINARY" data-lbx-mono-dither="MESH" />`;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="5000pt" height="5000pt" viewBox="0 0 5000 5000">${imageTag.repeat(3)}</svg>`;
+    await expect(renderSvgToPng(svg, { dpi: 72 })).rejects.toThrow('Monochrome image pixel budget exceeded');
+  });
+
+  it('rejects excessive monochrome image counts', async () => {
+    const sharp = (await import('sharp')).default;
+    const source = await sharp(Buffer.from([255, 0, 0]), { raw: { width: 1, height: 1, channels: 3 } }).png().toBuffer();
+    const href = `data:image/png;base64,${source.toString('base64')}`;
+    const imageTag = `<image x="0" y="0" width="1" height="1" href="${href}" data-lbx-mono-operation="BINARY" />`;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1pt" height="1pt" viewBox="0 0 1 1">${imageTag.repeat(129)}</svg>`;
+    await expect(renderSvgToPng(svg, { dpi: 72 })).rejects.toThrow('Too many monochrome images');
   });
 });

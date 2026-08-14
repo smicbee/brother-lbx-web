@@ -9,6 +9,8 @@ export interface PngRenderOptions {
 }
 
 const MAX_IMAGE_PIXELS = 25_000_000;
+const MAX_MONOCHROME_IMAGES = 128;
+const MAX_MONOCHROME_TOTAL_PIXELS = 50_000_000;
 
 function assertPixelDimensions(width: number | undefined, height: number | undefined, context: string): asserts width is number {
   if (!width || !height || !Number.isSafeInteger(width) || !Number.isSafeInteger(height) || width <= 0 || height <= 0 || width * height > MAX_IMAGE_PIXELS) {
@@ -104,15 +106,27 @@ function contrastFactor(value: number): number {
 }
 
 async function normalizeMonochromeImagesForResvg(svg: string, options: PngRenderOptions): Promise<string> {
-  const viewBox = svg.match(/\bviewBox="[-+\d.eE]+\s+[-+\d.eE]+\s+([-+\d.eE]+)\s+([-+\d.eE]+)"/i);
-  const viewBoxWidth = Number.parseFloat(viewBox?.[1] ?? '');
-  if (!(viewBoxWidth > 0)) return svg;
+  const viewBox = svg.match(/\bviewBox="([-+\d.eE]+)\s+([-+\d.eE]+)\s+([-+\d.eE]+)\s+([-+\d.eE]+)"/i);
+  const viewBoxX = Number.parseFloat(viewBox?.[1] ?? '');
+  const viewBoxY = Number.parseFloat(viewBox?.[2] ?? '');
+  const viewBoxWidth = Number.parseFloat(viewBox?.[3] ?? '');
+  const viewBoxHeight = Number.parseFloat(viewBox?.[4] ?? '');
+  if (!Number.isFinite(viewBoxX) || !Number.isFinite(viewBoxY) || !(viewBoxWidth > 0) || !(viewBoxHeight > 0)) return svg;
   const scale = options.fitWidth ? options.fitWidth / viewBoxWidth : (options.dpi ?? 300) / 72;
   const tags = [...svg.matchAll(/<image\b[^>]*\bdata-lbx-mono-operation="BINARY"[^>]*\/>/gi)].map((match) => match[0]);
   if (!tags.length) return svg;
+  if (tags.length > MAX_MONOCHROME_IMAGES) throw new Error(`Too many monochrome images (${tags.length} > ${MAX_MONOCHROME_IMAGES})`);
 
-  const sharp = (await import('sharp')).default;
-  let normalized = svg;
+  const candidates: Array<{
+    tag: string;
+    href: string;
+    encoded: string;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }> = [];
+  let totalPixels = 0;
   for (const tag of tags) {
     // The observed b-PAC calibration covers the normal RGB proportions and
     // unrotated image objects. Preserve the SVG fallback rather than applying
@@ -120,12 +134,27 @@ async function normalizeMonochromeImagesForResvg(svg: string, options: PngRender
     if (imageAttribute(tag, 'data-lbx-mono-proportions-reversed') === '1' || imageAttribute(tag, 'transform')) continue;
     const href = imageAttribute(tag, 'href');
     const encoded = href?.match(/^data:image\/(?:png|jpe?g|bmp);base64,([A-Za-z0-9+/=]+)$/i)?.[1];
-    if (!encoded) continue;
+    if (!href || !encoded) continue;
     const x = numericImageAttribute(tag, 'x', 0);
     const y = numericImageAttribute(tag, 'y', 0);
-    const width = Math.max(1, Math.round(numericImageAttribute(tag, 'width', 0) * scale));
-    const height = Math.max(1, Math.round(numericImageAttribute(tag, 'height', 0) * scale));
+    const objectWidth = numericImageAttribute(tag, 'width', 0);
+    const objectHeight = numericImageAttribute(tag, 'height', 0);
+    if (!(objectWidth > 0) || !(objectHeight > 0)) continue;
+    if (x + objectWidth <= viewBoxX || y + objectHeight <= viewBoxY || x >= viewBoxX + viewBoxWidth || y >= viewBoxY + viewBoxHeight) continue;
+    const width = Math.max(1, Math.round(objectWidth * scale));
+    const height = Math.max(1, Math.round(objectHeight * scale));
     assertPixelDimensions(width, height, 'Monochrome image');
+    totalPixels += width * height;
+    if (totalPixels > MAX_MONOCHROME_TOTAL_PIXELS) {
+      throw new Error(`Monochrome image pixel budget exceeded (${totalPixels} > ${MAX_MONOCHROME_TOTAL_PIXELS})`);
+    }
+    candidates.push({ tag, href, encoded, x, y, width, height });
+  }
+  if (!candidates.length) return svg;
+
+  const sharp = (await import('sharp')).default;
+  let normalized = svg;
+  for (const { tag, href, encoded, x, y, width, height } of candidates) {
     const resized = await sharp(Buffer.from(encoded, 'base64'), { limitInputPixels: MAX_IMAGE_PIXELS })
       .resize(width, height, { fit: 'fill', kernel: 'lanczos3' })
       // Transparent image pixels print as paper white. Flatten before examining
