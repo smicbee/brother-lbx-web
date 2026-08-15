@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { readFile, writeFile } from 'node:fs/promises';
 import { basename } from 'node:path';
-import { parseLBX, setObject, walkObjects } from './parser.js';
+import { getEditableFields, parseLBX, setObject, walkObjects } from './parser.js';
 import { renderToSvg } from './svg.js';
 import { pngToQlRasterJob, renderSvgToPng } from './node.js';
 
@@ -49,6 +49,7 @@ const report = {
   paper: document.paper,
   objectCount: [...walkObjects(document)].length,
   objects: [...walkObjects(document)].map((object) => ({ kind: object.kind, name: object.name, tag: object.tag, path: object.path })),
+  editableFields: getEditableFields(document),
   warnings: document.warnings,
   outputs: { svg: args.svg, png: args.png, raster: args.raster, json: args.json },
 };
