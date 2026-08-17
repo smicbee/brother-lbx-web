@@ -91,6 +91,28 @@ function clipId(object: LbxTextObject): string {
   return `lbx-clip-${(hash >>> 0).toString(16)}`;
 }
 
+function fixedQuarterTurnLayoutObject(object: LbxTextObject): LbxTextObject {
+  const control = object.control.trim().toUpperCase();
+  const angle = ((object.angle % 360) + 360) % 360;
+  if (object.vertical || control !== 'FIXEDFRAME' || (angle !== 90 && angle !== 270)) return object;
+
+  // Brother stores the page-aligned bounding box for quarter-turned text.
+  // Reconstruct the unrotated local frame around the same centre before
+  // fitting; otherwise a 29×120 pt field is measured against only 29 pt and
+  // its text is shrunk to a fraction of the native b-PAC size.
+  const centreX = object.bounds.x + object.bounds.width / 2;
+  const centreY = object.bounds.y + object.bounds.height / 2;
+  return {
+    ...object,
+    bounds: {
+      x: centreX - object.bounds.height / 2,
+      y: centreY - object.bounds.width / 2,
+      width: object.bounds.height,
+      height: object.bounds.width,
+    },
+  };
+}
+
 function renderText(object: LbxTextObject, options: SvgRenderOptions): string {
   const defaultFontSize = Math.max(0.01, options.defaultFontSize ?? 10);
   const layoutObject = (object.fontSize > 0 && object.runs.every((run) => run.fontSize > 0))
@@ -100,7 +122,7 @@ function renderText(object: LbxTextObject, options: SvgRenderOptions): string {
         fontSize: object.fontSize > 0 ? object.fontSize : defaultFontSize,
         runs: object.runs.map((run) => ({ ...run, fontSize: run.fontSize > 0 ? run.fontSize : defaultFontSize })),
       };
-  const layout = layoutText(layoutObject);
+  const layout = layoutText(fixedQuarterTurnLayoutObject(layoutObject));
   const hasFrame = !['', 'NULL', 'NONE'].includes((object.frameStyle ?? 'NULL').toUpperCase()) && ((object.frameWidthX ?? 0) > 0 || (object.frameWidthY ?? 0) > 0);
   const hasFill = !['', 'NULL', 'NONE'].includes((object.brushStyle ?? 'NULL').toUpperCase());
   const frameWidth = Math.max(0, ((object.frameWidthX ?? 0) + (object.frameWidthY ?? 0)) / 2);

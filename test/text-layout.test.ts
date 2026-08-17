@@ -311,6 +311,58 @@ describe('Brother text layout modes through BpacDocument', () => {
     expect(Number(svg.match(/data-lbx-effective-height="([0-9.]+)/)?.[1])).toBe(32.4);
   });
 
+  it('fits quarter-turn FIXEDFRAME text against the saved long axis', () => {
+    const document = openText({ control: 'FIXEDFRAME', frame: true, shrink: true }, 'SI19A1-00001');
+    const object = document.GetObject('label');
+    if (!object || object.raw.kind !== 'text') throw new Error('label text object missing');
+    object.raw.bounds = { x: 8.9, y: 49.2, width: 28.7, height: 120 };
+    object.raw.angle = 270;
+    object.raw.fontSize = 18;
+    object.raw.fontWeight = 700;
+    object.raw.verticalAlign = 'CENTER';
+    object.raw.runs = object.raw.runs.map((run) => ({
+      ...run, value: 'SI19A1-00001', fontFamily: 'Arial', fontSize: 18, fontWeight: 700,
+    }));
+
+    const svg = document.renderToSvg();
+    expect(svg).toContain('data-lbx-effective-width="120"');
+    expect(svg).toContain('data-lbx-effective-height="28.7"');
+    expect(svg).toContain('data-lbx-layout-scale="1"');
+    expect(svg).toContain('<rect x="-36.5" y="95.1" width="119.5" height="28.2"');
+    expect(svg).toContain('rotate(270 23.25 109.2)');
+    expect(svg).toContain('font-size="18"');
+  });
+
+  it('keeps 90 and 270 degree FIXEDFRAME ink inside the saved page AABB at 360 DPI', async () => {
+    for (const angle of [90, 270]) {
+      const document = openText(
+        { control: 'FIXEDFRAME', shrink: true },
+        'SI19A1-00001',
+        '180pt" height="200pt"',
+      );
+      const object = document.GetObject('label');
+      if (!object || object.raw.kind !== 'text') throw new Error('label text object missing');
+      object.raw.bounds = { x: 20, y: 40, width: 28.7, height: 120 };
+      object.raw.angle = angle;
+      object.raw.fontSize = 18;
+      object.raw.fontWeight = 700;
+      object.raw.verticalAlign = 'CENTER';
+      object.raw.runs = object.raw.runs.map((run) => ({
+        ...run, value: 'SI19A1-00001', fontFamily: 'Arial', fontSize: 18, fontWeight: 700,
+      }));
+
+      const raw = await pngToRawImageData(await renderSvgToPng(document.renderToSvg(), { dpi: 360 }));
+      const bounds = darkBounds(raw);
+      expect(raw.width).toBe(900);
+      expect(raw.height).toBe(1000);
+      expect(bounds.minX).toBeGreaterThanOrEqual(95);
+      expect(bounds.maxX).toBeLessThanOrEqual(250);
+      expect(bounds.minY).toBeGreaterThanOrEqual(195);
+      expect(bounds.maxY).toBeLessThanOrEqual(805);
+      expect(bounds.maxY - bounds.minY).toBeGreaterThan(450);
+    }
+  });
+
   it('preserves rotated AUTOLEN frame geometry until native axis semantics are calibrated', () => {
     const document = openText({ control: 'AUTOLEN' });
     const object = document.GetObject('label');
